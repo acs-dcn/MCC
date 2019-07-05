@@ -14,7 +14,7 @@ $sudo ./build.sh
 There is a `build_type` option in `build.sh` to designate build type of the project. And the built 
 executable file is put in directory `$PWD/build/$build_type/`
 
-# Usage
+# Introduction ot examples
 The `test` subdirectory contains many tests example, check the code for more details. 
 * conn_test: simulate connection setup, running in single-core mode.
 * delay_test: construct a single tcp flow and calculates the delay in ping-pong mode.
