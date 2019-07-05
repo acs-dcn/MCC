@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package infgen;
+
+message report {
+  uint32 completes = 1;
+  uint32 delay = 2;
+  uint32 rx_bytes = 3;
+
+  message notice {
+    bool online = 1;
+  }
+
+  notice note = 4;
+  uint32 client_id = 5;
+}
+
+message command {
+  uint32 conn = 1;
+  uint64 start_ts = 2;
+  uint32 duration = 3;
+}
