@@ -215,7 +215,7 @@ int main(int argc, char **argv) {
     auto loaders = new distributor<client>;
     loaders->start(conn / (smp::count-1), epoch, burst / (smp::count-1),
         setup, wait, duration, ratio);
-    loaders->invoke_on_all(&client::start, ipv4_addr(dest, 1080));
+    loaders->invoke_on_all(&client::start, ipv4_addr(dest, 80));
 
     adder connected, send, request, received, retry;
     engine().add_periodic_task_at<infinite>(
