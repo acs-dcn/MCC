@@ -23,8 +23,11 @@ if [ "$ID" = "centos" ] ; then
   # upgrade kernel in elrepo
   yum install -y --enablerepo elrepo-kernel kernel-lt kernel-lt-devel kernel-lt-headers
   yum install -y "${centos_packets}"
+  
+  # Download dependencies
+  mkdir downloads && cd downloads
+  
   # install protobuf
-  cd downloads
   wget https://github.com/protocolbuffers/protobuf/releases/download/v3.5.0/protobuf-cpp-3.5.0.tar.gz 
   tar xf protobuf-cpp-3.5.0.tar.gz
   cd protobuf-3.5.0
