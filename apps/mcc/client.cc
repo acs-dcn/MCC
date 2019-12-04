@@ -198,6 +198,7 @@ public:
 					type_cnt_ = 0;
 					send_request(j);
 				}
+				type_cnt_ += 1;
               }
             }
           });
