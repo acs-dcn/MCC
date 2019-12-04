@@ -26,6 +26,8 @@ private:
   double request_ratio_;
   unsigned wait_time_;
   unsigned duration_;
+  //@wuwenqing
+  int type_cnt_;
 
   std::vector<connptr> conns_;
   std::vector<int> ref_;
@@ -99,12 +101,16 @@ public:
   }
 
   void start(ipv4_addr server_addr) {
+	 //@wuwenqing, packet_level priority
+	type_cnt_  = 0;
+/*
+ 	// flow-level priority
     ref_.resize(burst_);
     std::iota(ref_.begin(), ref_.end(), 0);
     std::random_device rd;
     std::mt19937 g(rd());
     std::shuffle(ref_.begin(), ref_.end(), g);
-
+*/
     auto block = nr_conns_ / setup_time_;
     for (unsigned i = 0; i < setup_time_; i++) {
       engine().add_oneshot_task_after(i * 1s, [=] {
@@ -169,6 +175,9 @@ public:
     auto blocks = conns_.size() / burst_;
     blocks = blocks <= 0 ? 1 : blocks;
     auto interval = epoch_ * 1000 / blocks;
+	//@wuwenqing
+	auto request_bound = static_cast<int>(burst_ * request_ratio_);
+	auto heartbeat_bound = static_cast<int>(burst_);
 
 	app_logger.info("interval: {}", interval);
 	app_logger.info("blocks: {}", blocks);
@@ -178,12 +187,17 @@ public:
             for (unsigned j = i * burst_;
                  j < (i + 1) * burst_ && j < conns_.size(); j++) {
               if (conns_[j]->get_state() == tcp_connection::state::connected) {
-                if (ref_[j % burst_] <
-                    static_cast<int>(burst_ * request_ratio_)) {
+			    // @wuwenqing
+                //if (ref_[j % burst_] <
+                //    static_cast<int>(burst_ * request_ratio_)) {
+				if (type_cnt_ < request_bound) {
                   send_request(j);
-                } else {
+                } else if (type_cnt_ <= heartbeat_bound) {
                   send_heartbeat(j);
-                }
+                } else {
+					type_cnt_ = 0;
+					send_request(j);
+				}
               }
             }
           });
