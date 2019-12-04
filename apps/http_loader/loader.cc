@@ -13,6 +13,9 @@
 using namespace infgen;
 namespace bpo = boost::program_options;
 
+std::string request;
+
+
 class http_client {
 private:
   unsigned duration_;
@@ -44,9 +47,10 @@ private:
 
     bool request_sent;
     void do_req() {
-      flow->send_packet("GET / HTTP/1.1\r\n"
-          "HOST: 192.168.2.2\r\n\r\n");
-      request_sent = true;
+      //flow->send_packet("GET / HTTP/1.1\r\n"
+      //    "HOST: 192.168.2.2\r\n\r\n");
+      flow->send_packet(request);
+	  request_sent = true;
       send_ts = system_clock::now();
     }
 
@@ -161,6 +165,7 @@ public:
 int main(int argc, char **argv) {
   application app;
   app.add_options()
+	("length,l", bpo::value<unsigned>()->default_value(16), "length of message (> 8)")
     ("conn,c", bpo::value<unsigned>()->default_value(100), "total connections")
     ("duration,d", bpo::value<unsigned>()->default_value(0), "duration of test in seconds");
   app.run(argc, argv, [&app] {
@@ -168,11 +173,17 @@ int main(int argc, char **argv) {
     auto server = config["dest"].as<std::string>();
     auto total_conn = config["conn"].as<unsigned>();
     auto duration = config["duration"].as<unsigned>();
+	auto length = config["length"].as<unsigned>();
 
     if (total_conn % (smp::count-1) != 0) {
       fmt::print("Error: conn needs to be n * cpu_nr \n");
       exit(-1);
     }
+	/* Payload with fixed length */
+	request = std::string(length,'0'); //16, '0'
+    request[5] = 0x01;
+    request[6] = 0x02;
+    request[7] = 0x01;
 
     auto clients = new distributor<http_client>;
     clients->start(duration, total_conn);

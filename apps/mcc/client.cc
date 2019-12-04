@@ -15,6 +15,8 @@ using namespace std;
 namespace bpo = boost::program_options;
 logger client_logger("client_log", true);
 
+std::string request_data;
+
 class client {
 private:
   unsigned nr_conns_;
@@ -29,7 +31,7 @@ private:
   std::vector<int> ref_;
 
   std::string heartbeat_;
-  std::string request_;
+  //std::string request_;
 
   distributor<client>* container_;
 
@@ -50,7 +52,7 @@ private:
   }
 
   void send_request(unsigned j) {
-    conns_[j]->send_packet(request_);
+    conns_[j]->send_packet(request_data /*request_*/);
     stats_sec.request++;
     stats_sec.send++;
     stats_log.request++;
@@ -68,8 +70,12 @@ public:
          unsigned wait_time, unsigned duration, double ratio)
       : nr_conns_(conns), epoch_(epoch), burst_(burst), setup_time_(setup_time),
         request_ratio_(ratio), wait_time_(wait_time), duration_(duration),
-        heartbeat_(30, 0), request_(30, 0),
-        stats_sec(metrics{}), stats_log(metrics{}) {}
+        heartbeat_(30, 0), /*request_(30, 0),*/
+        stats_sec(metrics{}), stats_log(metrics{}) {
+			//request_[5] = 0x01;
+			//request_[6] = 0x02;
+			heartbeat_[8] = 0x08;
+		}
 
   void set_container(distributor<client>* container) {
     container_ = container;
@@ -164,6 +170,8 @@ public:
     blocks = blocks <= 0 ? 1 : blocks;
     auto interval = epoch_ * 1000 / blocks;
 
+	app_logger.info("interval: {}", interval);
+	app_logger.info("blocks: {}", blocks);
     for (unsigned i = 0; i < blocks; i++) {
       engine().add_periodic_task_at<infinite>(
           system_clock::now() + i * milliseconds(interval), seconds(epoch_), [=] {
@@ -186,6 +194,7 @@ public:
 int main(int argc, char **argv) {
   application app;
   app.add_options()
+	("length,l", bpo::value<unsigned>()->default_value(16), "length of message (> 8)")
     ("epoch,e", bpo::value<unsigned>()->default_value(1), "send epoch(s)")
     ("burst,b", bpo::value<unsigned>()->default_value(1), "burst packets")
     ("conn,c", bpo::value<unsigned>()->default_value(1), "number of flows")
@@ -206,6 +215,11 @@ int main(int argc, char **argv) {
     auto ratio = config["request-ratio"].as<double>();
     auto log_duration = config["log-duration"].as<unsigned>();
     auto dest = config["dest"].as<std::string>();
+	auto length = config["length"].as<unsigned>();
+
+	request_data = std::string(length,'0'); //30, '0'
+	request_data[5] = 0x01;
+	request_data[6] = 0x02;
 
     fmt::print(
         "configuration: \nconnections: {}\n  epoch: {}\n  burst: {}\n"
