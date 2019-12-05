@@ -16,6 +16,7 @@ namespace bpo = boost::program_options;
 logger client_logger("client_log", true);
 
 std::string request_data;
+std::string heartbeat_data;
 
 class client {
 private:
@@ -32,7 +33,7 @@ private:
   std::vector<connptr> conns_;
   std::vector<int> ref_;
 
-  std::string heartbeat_;
+  //std::string heartbeat_;
   //std::string request_;
 
   distributor<client>* container_;
@@ -62,7 +63,7 @@ private:
   }
 
   void send_heartbeat(unsigned j) {
-    conns_[j]->send_packet(heartbeat_);
+    conns_[j]->send_packet(heartbeat_data /*heartbeat_*/);
     stats_sec.send++;
     stats_log.send++;
   }
@@ -72,11 +73,11 @@ public:
          unsigned wait_time, unsigned duration, double ratio)
       : nr_conns_(conns), epoch_(epoch), burst_(burst), setup_time_(setup_time),
         request_ratio_(ratio), wait_time_(wait_time), duration_(duration),
-        heartbeat_(30, 0), /*request_(30, 0),*/
+        /*heartbeat_(30, 0),*/ /*request_(30, 0),*/
         stats_sec(metrics{}), stats_log(metrics{}) {
 			//request_[5] = 0x01;
 			//request_[6] = 0x02;
-			heartbeat_[8] = 0x08;
+			//heartbeat_[8] = 0x08;
 		}
 
   void set_container(distributor<client>* container) {
@@ -101,10 +102,10 @@ public:
   }
 
   void start(ipv4_addr server_addr) {
-	 //@wuwenqing, packet_level priority
+	 //@wuwenqing, grain of priority: packet
 	type_cnt_  = 0;
 /*
- 	// flow-level priority
+ 	// Grain of priority: flow
     ref_.resize(burst_);
     std::iota(ref_.begin(), ref_.end(), 0);
     std::random_device rd;
@@ -232,9 +233,13 @@ int main(int argc, char **argv) {
     auto dest = config["dest"].as<std::string>();
 	auto length = config["length"].as<unsigned>();
 
+	// @wuwenqing, Initialize payload
 	request_data = std::string(length,'0'); //30, '0'
 	request_data[5] = 0x01;
 	request_data[6] = 0x02;
+
+	heartbeat_data = std::string(length,'0'); //30, '0'
+	heartbeat_data[8] = 0x08;
 
     fmt::print(
         "configuration: \nconnections: {}\n  epoch: {}\n  burst: {}\n"
