@@ -61,8 +61,10 @@ $ git submodule update
 ```bash
 $ cd mtcp/
 $ ./build-dpdk.sh
+```
 
-Compile
+#### Compile
+```bash
 $ cd ..
 $ ./build.sh
 ```
