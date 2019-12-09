@@ -8,7 +8,9 @@ MCC is a highly scalable and predictable network load generator. It can replicat
 
 **V 1.0**
 
-User-level-stack-based; Reactor pattern; multi-threaded; Distributor + Workers
++ User-level-stack-based
++ Reactor pattern
++ Multi-threaded
 
 ### Architecture
  
@@ -35,14 +37,7 @@ pciutils
 **Introduction to examples**
 
 The test subdirectory contains many tests example, check the code for more details.
-
-+ conn_test: simulate connection setup, running in single-core mode.
-+ delay_test: construct a single tcp flow and calculates the delay in ping-pong mode.
-+ smp_tests: a multi-threaded work model unit tests.
-+ accurate_ts: the accurate I/O test, a timestamp sequence must be provided for this test, you can use possion_gen in the same directory to generate one, or you can write your own.
-+ possion_traffic_test: same as accurate_ts but using APP-level timer, a timestamp sequence must be provided
-
-The apps subdirectory contains several generator apps using infgen framework, runtime options can be viewed using -h option, check the code for more details.
+The apps subdirectory contains several generator apps using MCC framework, runtime options can be viewed using -h option, check the code for more details.
 
 + mcc: massive concurrent connections, simulate a large number of concurrent tcp connections scenerio, modify the payload content to get reasonable response from your server.
 + http_loader: a simple http protocol loader like wrk
@@ -78,6 +73,7 @@ Take http_loader for example:
 ```bash
 $ cd build/release/apps/http_loader/
 $ ./http_loader -c 4200 -d 60 --smp 11 --network-stack mtcp --dest 192.168.3.6
+
 -c [ --conn ] arg (=100)       Total connections
 -d [ --duration ] arg (=0)      Duration of test in seconds
 --smp arg (=1)        		Number of threads (default: one per CPU)
