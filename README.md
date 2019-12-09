@@ -72,7 +72,7 @@ There is a build_type option in build.sh to designate build type of the project.
 
 #### Run
 
-Take http_loader for example:
+Take mcc_client for example:
 ```bash
 $ cd build/release/apps/mcc/
 $ ./mcc -c 1000000 -d 60 --smp 9 --network-stack mtcp --dest 192.168.3.6
