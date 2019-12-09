@@ -14,7 +14,7 @@ MCC is a highly scalable and predictable network load generator. It can replicat
 
 ### Architecture
  
- ![MCC_architecture](iamges/mcc_architecture.png)
+ ![MCC_architecture](images/mcc_architecture.png)
 
 ### Prerequisites
 Intel DPDK      
