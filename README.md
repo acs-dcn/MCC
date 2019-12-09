@@ -74,8 +74,8 @@ There is a build_type option in build.sh to designate build type of the project.
 
 Take http_loader for example:
 ```bash
-$ cd build/release/apps/http_loader/
-$ ./http_loader -c 4200 -d 60 --smp 11 --network-stack mtcp --dest 192.168.3.6
+$ cd build/release/apps/mcc/
+$ ./mcc -c 1000000 -d 60 --smp 9 --network-stack mtcp --dest 192.168.3.6
 
 -c [ --conn ] arg (=100)       Total connections
 -d [ --duration ] arg (=0)      Duration of test in seconds
