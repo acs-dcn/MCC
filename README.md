@@ -1,4 +1,4 @@
-## MCC (Massive Client Connections)
+# MCC (Massive Client Connections)
 
 ### Introduction
 
@@ -26,13 +26,13 @@ pciutils
 ### Included directories
 
 ./    
- |__ apps/      Sample applications      
- |__ conf/      Sample configuration file       
- |__ http/      HTTP parse library       
- |__ mtcp/      User-level stack      
- |__ scripts/   Scripts used for deployment      
- |__ src/       Source files    
- |__ tests/     Test examples     
++ apps/      Sample applications      
++ conf/      Sample configuration file       
++ http/      HTTP parse library       
++ mtcp/      User-level stack      
++ scripts/   Scripts used for deployment      
++ src/       Source files    
++ tests/     Test examples     
 
 **Introduction to examples**
 
