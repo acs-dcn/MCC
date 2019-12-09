@@ -26,13 +26,13 @@ pciutils
 ### Included directories
 
 ./    
- |__ apps/ 		Sample applications      
- |__ conf/ 		Sample configuration file       
- |__ http/ 		HTTP parse library       
- |__ mtcp/ 		User-level stack      
- |__ scripts/ 	Scripts used for deployment      
- |__ src/ 		Source files    
- |__ tests/ 		Test examples     
+ |__ apps/      Sample applications      
+ |__ conf/      Sample configuration file       
+ |__ http/      HTTP parse library       
+ |__ mtcp/      User-level stack      
+ |__ scripts/   Scripts used for deployment      
+ |__ src/       Source files    
+ |__ tests/     Test examples     
 
 **Introduction to examples**
 
@@ -83,11 +83,25 @@ $ ./http_loader -c 4200 -d 60 --smp 11 --network-stack mtcp --dest 192.168.3.6
 ```
 
 ### Frequently asked questions
-Xxx
+
+1. How can I quit the application?
+Use ^C to gracefully shutdown the application. Or you can kill process with “pkill” command in Linux.
+
+2. No connection is established successfully when using user-level stack.
+You need to add static ARP entry and static route entry.
+
+### Roadmap
+
++ Extend to distributed systems.
++ Simulating complicated WAN workload.
++ Stateless load generation.
++ Replaying captured traffic in a controlable manner. 
 
 ### Contacts
 
-wuwenqing@ict.ac.cn   convexcat@outlook.com
+wuwenqing@ict.ac.cn   
+
+convexcat@outlook.com
 
 ### References
 > [1] Wu, Wenqing, et al. "MCC: a Predictable and Scalable Massive Client Load Generator."  International Symposium on Benchmarking, Measuring and Optimization. Springer, Cham, 2019.
