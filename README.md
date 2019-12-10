@@ -1,3 +1,4 @@
+
 # MCC (Massive Client Connections)
 
 ### Introduction
@@ -25,14 +26,16 @@ pciutils
 
 ### Included directories
 
+```bash
 ./    
-+ apps/      Sample applications      
-+ conf/      Sample configuration file       
-+ http/      HTTP parse library       
-+ mtcp/      User-level stack      
-+ scripts/   Scripts used for deployment      
-+ src/       Source files    
-+ tests/     Test examples     
+|__apps/			Sample applications      
+|__conf/			Sample configuration file       
+|__http/			HTTP parse library       
+|__mtcp/			User-level stack      
+|__scripts/			Scripts used for deployment      
+|__src/				Source files    
+|__tests/			Test examples     
+```
 
 **Introduction to examples**
 
@@ -47,7 +50,7 @@ The apps subdirectory contains several generator apps using MCC framework, runti
 #### Downloads
 
 ```bash
-$ ./ install_dependencies.sh
+$ ./install_dependencies.sh
 $ git submodule init
 $ git submodule update
 $ cd mtcp
@@ -72,16 +75,16 @@ There is a build_type option in build.sh to designate build type of the project.
 
 #### Run
 
-Take mcc_client for example:
+Take mcc_client (An application used for simulating high-concurrent network load in IoT network) for example:
 ```bash
 $ cd build/release/apps/mcc/
 $ ./mcc -c 1000000 -d 60 --smp 9 --network-stack mtcp --dest 192.168.3.6
 
--c [ --conn ] arg (=100)       Total connections
--d [ --duration ] arg (=0)      Duration of test in seconds
---smp arg (=1)        		Number of threads (default: one per CPU)
---network-stack arg (=kernel) 	Select network stack (default: kernel stack)
---dest arg (=192.168.1.1)     	Destination IP
+-c [ --conn ] arg (=100)		Total connections
+-d [ --duration ] arg (=0)		Duration of test in seconds
+--smp arg (=1)					Number of threads (default: one per CPU)
+--network-stack arg (=kernel)	Select network stack (default: kernel stack)
+--dest arg (=192.168.1.1)		Destination IP
 ```
 
 ### Frequently asked questions
