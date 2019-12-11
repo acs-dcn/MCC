@@ -3,7 +3,7 @@
 
 ### Introduction
 
-MCC is a highly scalable and predictable network load generator. It can replicate flow-level network load utilizing BSD-like socket API provided by user-level TCP/IP stack. Thanks to the incredibly fast user-level stack, it can achieve 3.2 million concurrent TCP connections using only a single CPU core. 
+MCC is a predictable and highly scalable network load generator used for simulating workload in IoT scenarios. It can replicate flow-level network load utilizing BSD-like socket API provided by user-level TCP/IP stack. According to experiments, MCC can generate 3.2 million concurrent TCP connections using only a single CPU core, and achieve almost linearly scalability in multicore systems. 
 
 ### Release Notes
 
@@ -75,7 +75,7 @@ There is a build_type option in build.sh to designate build type of the project.
 
 #### Run
 
-Take mcc_client (An application used for simulating high-concurrent network load in IoT network) for example:
+Take mcc_client (An application used for simulating high-concurrent network load in IoT scenarios) for example:
 ```bash
 $ cd build/release/apps/mcc/
 $ ./mcc -c 1000000 -d 60 --smp 9 --network-stack mtcp --dest 192.168.3.6
