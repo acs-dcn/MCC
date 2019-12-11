@@ -29,21 +29,18 @@ pciutils
 ```bash
 ./    
 |__apps/			Sample applications      
-|__conf/			Sample configuration file       
-|__http/			HTTP parse library       
+|__conf/			Sample configuration files       
+|__http/			HTTP parsing files      
 |__mtcp/			User-level stack      
 |__scripts/			Scripts used for deployment      
 |__src/				Source files    
-|__tests/			Test examples     
+|__tests/			Testing examples   
 ```
 
-**Introduction to examples**
+**Introduction to apps**
 
-The test subdirectory contains many tests example, check the code for more details.
-The apps subdirectory contains several generator apps using MCC framework, runtime options can be viewed using -h option, check the code for more details.
-
-+ mcc: massive concurrent connections, simulate a large number of concurrent tcp connections scenerio, modify the payload content to get reasonable response from your server.
-+ http_loader: a simple http protocol loader like wrk
++ mcc_client: an app used for simulating massive concurrent tcp connections in IoT scenerio.
++ http_loader: an HTTP benchmarking tool like wrk.
 
 ### Installation
 
@@ -75,7 +72,7 @@ There is a build_type option in build.sh to designate build type of the project.
 
 #### Run
 
-Take mcc_client (An application used for simulating high-concurrent network load in IoT scenarios) for example:
+Take mcc_client for example:
 ```bash
 $ cd build/release/apps/mcc/
 $ ./mcc -c 1000000 -d 60 --smp 9 --network-stack mtcp --dest 192.168.3.6
