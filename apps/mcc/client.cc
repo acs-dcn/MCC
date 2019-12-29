@@ -28,15 +28,14 @@ private:
   double request_ratio_;
   unsigned wait_time_;
   unsigned duration_;
-  //@wuwenqing
-  //int type_cnt_;
 
   std::vector<connptr> conns_;
   std::vector<int> ref_;
 
-  //@ wuwenqing, for fixed length of payload
+  //for fixed length of payload
   //std::string heartbeat_;
   //std::string request_;
+  unsigned prio_grain_; //priority grain (packet vs. flow)
 
   distributor<client>* container_;
 
@@ -72,11 +71,12 @@ private:
 
 public:
   client(unsigned conns, unsigned epoch, unsigned burst, unsigned setup_time,
-         unsigned wait_time, unsigned duration, double ratio)
+         unsigned wait_time, unsigned duration, double ratio, unsigned prio_grain)
       : nr_conns_(conns), epoch_(epoch), burst_(burst), setup_time_(setup_time),
         request_ratio_(ratio), wait_time_(wait_time), duration_(duration),
+		prio_grain_(prio_grain),
         /*heartbeat_(30, 0),*/ /*request_(30, 0),*/
-        stats_sec(metrics{}), stats_log(metrics{}) {
+        stats_sec(metrics{}), stats_log(metrics{}){
 			//request_[5] = 0x01;
 			//request_[6] = 0x02;
 			//heartbeat_[8] = 0x08;
@@ -104,16 +104,15 @@ public:
   }
 
   void start(ipv4_addr server_addr) {
-	//@wuwenqing, grain of priority: packet
-	//type_cnt_  = 0;
 
- 	// Grain of priority: flow
-    ref_.resize(burst_);
-    std::iota(ref_.begin(), ref_.end(), 0);
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(ref_.begin(), ref_.end(), g);
-
+	if (prio_grain_ == 1) {
+		// Grain of priority: flow
+		ref_.resize(burst_);
+		std::iota(ref_.begin(), ref_.end(), 0);
+		std::random_device rd;
+		std::mt19937 g(rd());
+		std::shuffle(ref_.begin(), ref_.end(), g);
+	}
     auto block = nr_conns_ / setup_time_;
     for (unsigned i = 0; i < setup_time_; i++) {
       engine().add_oneshot_task_after(i * 1s, [=] {
@@ -178,35 +177,30 @@ public:
     auto blocks = conns_.size() / burst_;
     blocks = blocks <= 0 ? 1 : blocks;
     auto interval = epoch_ / blocks;
-	//@wuwenqing
-	//auto request_bound = static_cast<int>(burst_ * request_ratio_);
-	//auto heartbeat_bound = static_cast<int>(burst_);
 
 	app_logger.info("interval: {}", interval);
 	app_logger.info("blocks: {}", blocks);
     for (unsigned i = 0; i < blocks; i++) {
       engine().add_periodic_task_at<infinite>(
           system_clock::now() + i * milliseconds(interval), milliseconds(epoch_), [=] {
+		  	int type_cnt = 0;
             for (unsigned j = i * burst_;
                  j < (i + 1) * burst_ && j < conns_.size(); j++) {
               if (conns_[j]->get_state() == tcp_connection::state::connected) {
-                if (ref_[j % burst_] < static_cast<int>(burst_ * request_ratio_)) {
-					send_request(j);
-				} else {
-					send_heartbeat(j);
+			  	if (prio_grain_ == 1) { // flow-level priority
+					if (ref_[j % burst_] < static_cast<int>(burst_ * request_ratio_)) {
+						send_request(j);
+					} else {
+						send_heartbeat(j);
+					}
+				} else { //packet-level priority
+					if (type_cnt < static_cast<int>(burst_ * request_ratio_)) {
+					  send_request(j);
+					} else {
+					  send_heartbeat(j);
+					}
+					type_cnt += 1;
 				}
-				/*
-			    // @wuwenqing
-				if (type_cnt_ < request_bound) {
-                  send_request(j);
-                } else if (type_cnt_ <= heartbeat_bound) {
-                  send_heartbeat(j);
-                } else {
-					type_cnt_ = 0;
-					send_request(j);
-				}
-				type_cnt_ += 1;
-				*/
               }
             }
           });
@@ -218,6 +212,7 @@ int main(int argc, char **argv) {
   application app;
   app.add_options()
 	("length,l", bpo::value<unsigned>()->default_value(16), "length of message (> 8)")
+	("priority-level,p", bpo::value<unsigned>()->default_value(1), "Grain of priority (default flow-level)")
     /*("epoch,e", bpo::value<unsigned>()->default_value(1), "send epoch(s)")*/
     ("epoch,e", bpo::value<float>()->default_value(1.0), "send epoch(s)")
     ("burst,b", bpo::value<unsigned>()->default_value(1), "burst packets")
@@ -230,7 +225,7 @@ int main(int argc, char **argv) {
 
   app.run(argc, argv, [&app] {
     auto &config = app.configuration();
-    auto epoch = static_cast<unsigned>(1000 * config["epoch"].as<float>());
+    auto epoch = static_cast<unsigned>(1000 * config["epoch"].as<float>()); //Milliseconds
     auto conn = config["conn"].as<unsigned>();
     auto burst = config["burst"].as<unsigned>();
     auto setup = config["setup-time"].as<unsigned>();
@@ -240,6 +235,7 @@ int main(int argc, char **argv) {
     auto log_duration = config["log-duration"].as<unsigned>();
     auto dest = config["dest"].as<std::string>();
 	auto length = config["length"].as<unsigned>();
+	auto prio_grain = config["priority-level"].as<unsigned>();
 
 	// @wuwenqing, Initialize payload
 	request_data = std::string(length,'0'); //30, '0'
@@ -256,7 +252,7 @@ int main(int argc, char **argv) {
 
     auto loaders = new distributor<client>;
     loaders->start(conn / (smp::count-1), epoch, burst / (smp::count-1),
-        setup, wait, duration, ratio);
+        setup, wait, duration, ratio, prio_grain);
     loaders->invoke_on_all(&client::start, ipv4_addr(dest, 80));
 
     adder connected, send, request, received, retry;
