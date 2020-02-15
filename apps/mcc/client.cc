@@ -9,6 +9,8 @@
 #include <vector>
 #include <random>
 
+#include <time.h>
+
 using namespace infgen;
 using namespace std;
 
@@ -16,8 +18,8 @@ namespace bpo = boost::program_options;
 logger client_logger("client_log", true);
 
 //@ wuwenqing, for dynamic length of payload
-std::string request_data;
-std::string heartbeat_data;
+//std::string request_data;
+//std::string heartbeat_data;
 
 class client {
 private:
@@ -32,10 +34,11 @@ private:
   std::vector<connptr> conns_;
   std::vector<int> ref_;
 
-  //for fixed length of payload
-  //std::string heartbeat_;
-  //std::string request_;
+  //@ wuwenqing for fixed length of payload
+	unsigned req_length_;
   unsigned prio_grain_; //priority grain (packet vs. flow)
+  std::string heartbeat_;
+  std::string request_;
 
   distributor<client>* container_;
 
@@ -56,7 +59,7 @@ private:
   }
 
   void send_request(unsigned j) {
-    conns_[j]->send_packet(request_data /*request_*/);
+    conns_[j]->send_packet(/*request_data*/ request_);
     stats_sec.request++;
     stats_sec.send++;
     stats_log.request++;
@@ -64,22 +67,33 @@ private:
   }
 
   void send_heartbeat(unsigned j) {
-    conns_[j]->send_packet(heartbeat_data /*heartbeat_*/);
+    conns_[j]->send_packet(/*heartbeat_data*/ heartbeat_ );
     stats_sec.send++;
     stats_log.send++;
   }
 
+  unsigned Fibonacci_service(unsigned n) {
+  	unsigned pre = 0;
+		unsigned cur = 1;
+
+	while (n-- > 0) {
+		cur += pre;
+		pre = cur - pre;
+	}
+
+	return pre;
+  }
 public:
   client(unsigned conns, unsigned epoch, unsigned burst, unsigned setup_time,
-         unsigned wait_time, unsigned duration, double ratio, unsigned prio_grain)
+         unsigned wait_time, unsigned duration, double ratio, unsigned req_length, unsigned prio_grain)
       : nr_conns_(conns), epoch_(epoch), burst_(burst), setup_time_(setup_time),
         request_ratio_(ratio), wait_time_(wait_time), duration_(duration),
-		prio_grain_(prio_grain),
-        /*heartbeat_(30, 0),*/ /*request_(30, 0),*/
+				req_length_(req_length), prio_grain_(prio_grain),
+        heartbeat_(req_length, 0), request_(req_length, 0),
         stats_sec(metrics{}), stats_log(metrics{}){
-			//request_[5] = 0x01;
-			//request_[6] = 0x02;
-			//heartbeat_[8] = 0x08;
+			request_[5] = 0x01;
+			request_[6] = 0x02;
+			heartbeat_[8] = 0x08;
 		}
 
   void set_container(distributor<client>* container) {
@@ -131,6 +145,11 @@ public:
             stats_log.received++;
             std::string s = conn->get_input().string();
             conn->get_input().consume(s.size());
+
+			//@ wuwenqing, costing about 80 us
+			//unsigned val = Fibonacci_service(60000); 
+			//request_data[8] = static_cast<int>(val % 127);
+
           });
 
           conn->when_closed([this] {
@@ -234,16 +253,8 @@ int main(int argc, char **argv) {
     auto ratio = config["request-ratio"].as<double>();
     auto log_duration = config["log-duration"].as<unsigned>();
     auto dest = config["dest"].as<std::string>();
-	auto length = config["length"].as<unsigned>();
-	auto prio_grain = config["priority-level"].as<unsigned>();
-
-	// @wuwenqing, Initialize payload
-	request_data = std::string(length,'0'); //30, '0'
-	request_data[5] = 0x01;
-	request_data[6] = 0x02;
-
-	heartbeat_data = std::string(length,'0'); //30, '0'
-	heartbeat_data[8] = 0x08;
+		auto length = config["length"].as<unsigned>();
+		auto prio_grain = config["priority-level"].as<unsigned>();
 
     fmt::print(
         "configuration: \nconnections: {}\n  epoch: {}\n  burst: {}\n"
@@ -252,7 +263,7 @@ int main(int argc, char **argv) {
 
     auto loaders = new distributor<client>;
     loaders->start(conn / (smp::count-1), epoch, burst / (smp::count-1),
-        setup, wait, duration, ratio, prio_grain);
+        setup, wait, duration, ratio, length, prio_grain);
     loaders->invoke_on_all(&client::start, ipv4_addr(dest, 80));
 
     adder connected, send, request, received, retry;
