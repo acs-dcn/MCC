@@ -10,6 +10,8 @@ find_package(dpdk REQUIRED)
 set(MTCP_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/mtcp/mtcp/include")
 set(MTCP_LIBRARY_PATH "${PROJECT_SOURCE_DIR}/mtcp/mtcp/lib")
 set(DPDK_LIBRARY_PATH "$ENV{RTE_SDK}/$ENV{RTE_TARGET/lib}")
+set(AES_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/aes")
+set(AES_LIBRARY_PATH "${PROJECT_SOURCE_DIR}/aes")
 
 set (CMAKE_BUILD_TYPE
   "${CMAKE_BUILD_TYPE}"
@@ -39,12 +41,14 @@ add_library(infnet STATIC
   src/mepoll.cc
   src/io_sched.cc
   src/tcp_server.cc
+	src/ssl_layer.cc
 )
 
 target_include_directories(infnet
   PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${MTCP_INCLUDE_DIR}
+		${AES_INCLUDE_DIR}
   INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -53,6 +57,7 @@ target_link_directories(infnet
   PUBLIC
     ${MTCP_LIBRARY_PATH}
     ${DPDK_LIBRARY_PATH}
+    ${AES_LIBRARY_PATH}
 )
 
 target_compile_features(infnet PUBLIC cxx_std_17)
@@ -62,6 +67,8 @@ target_compile_options(infnet
     -Wall
     -Werror
     -Wno-error=deprecated-declarations
+		-g
+		-DAES_GCM
 )
 
 target_link_libraries(infnet 
@@ -72,6 +79,7 @@ target_link_libraries(infnet
     Boost::program_options
     mtcp 
     gmp
+		aes
     #numa
     #dl
     #dpdk

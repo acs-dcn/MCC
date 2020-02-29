@@ -3,6 +3,10 @@
 #include "mtcp_connection.h"
 #include "reactor.h"
 
+#ifdef AES_GCM
+#include "ssl_layer.h"
+#endif
+
 namespace infgen {
 
 extern logger net_logger;
@@ -54,8 +58,16 @@ size_t mtcp_connection::send(const void *data, size_t len) {
     return 0;
   }
   size_t nwrite = 0;
+#ifdef AES_GCM
+  try {
+		char ciphertext[1500];
+		ssl_aes.ssl_encrypt(ssl_aes.sctx_, (const unsigned char *)data, (unsigned char*)ciphertext, len);
+		len += 21; // Additianal + ciphertext + tag
+    nwrite = pfd_->get_mtcp_socket().write((const char*)ciphertext, len);
+#else
   try {
     nwrite = pfd_->get_mtcp_socket().write((const char *)data, len);
+#endif
     if (nwrite > 0) {
       stat_.collect(OUT, nwrite);
       net_logger.trace("Socket {} send {} bytes", pfd_->get_id(), nwrite);
@@ -135,6 +147,7 @@ bool mtcp_connection::handle_handshake(connptr con) {
     return true;
   }
 }
+
 void mtcp_connection::handle_read(connptr con) {
   if (state_ == state::connecting && handle_handshake(con)) {
     return;
@@ -146,7 +159,23 @@ void mtcp_connection::handle_read(connptr con) {
   while (state_ == state::connected) {
     input_.make_room();
     try {
-      auto ret = sock.read(input_.end(), input_.space());
+			std::optional<int> ret; 
+#ifdef AES_GCM
+			char data_read[1500];
+			auto data_len = sock.read(data_read, 1500);
+			if (data_len.has_value()) {
+					int len_tmp = data_len.value();
+					if (len_tmp < 16) {
+						net_logger.error("Socket {} in state {}, read data with unexpected length.",
+										sock.get(), (int)get_state());
+					} 
+					ret = ssl_aes.ssl_decrypt(ssl_aes.sctx_, (const unsigned char*)(data_read + 5), (unsigned char*)input_.end(), len_tmp - 21);
+			} else {
+			 	ret = std::nullopt;
+			}
+#else
+      ret = sock.read(input_.end(), input_.space());
+#endif
       if (ret.has_value()) {
         if (ret.value() == 0) {
           // connection closed by peer
