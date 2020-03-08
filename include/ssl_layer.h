@@ -31,25 +31,23 @@ public:
 
 	mbedtls_gcm_context context() const { return sctx_; }
 
-	void ssl_init(mbedtls_gcm_context &ctx);
+	static void ssl_init(mbedtls_gcm_context &ctx);
 
-	int ssl_connect() { return 1; }
+	static int ssl_connect() { return 1; }
 
-	void ssl_close() { /* Close ssl fd*/ }
+	static void ssl_close() { /* Close ssl fd*/ }
 
-	void ssl_destroy(mbedtls_gcm_context &ctx) {
+	static void ssl_destroy(mbedtls_gcm_context &ctx) {
 #ifdef AES_GCM
 		// Free gcm context
 		mbedtls_gcm_free(&ctx);	
 #endif
 	} 
 
-	void ssl_encrypt(mbedtls_gcm_context &ctx, const unsigned char *data, unsigned char* ciphertext, size_t len); 
+	static void ssl_encrypt(mbedtls_gcm_context ctx, const unsigned char *data, unsigned char* ciphertext, size_t len); 
 
-	std::optional<size_t> ssl_decrypt(mbedtls_gcm_context &ctx, const unsigned char *data, unsigned char* plaintext, size_t len); 
+	static std::optional<size_t> ssl_decrypt(mbedtls_gcm_context ctx, const unsigned char *data, unsigned char* plaintext, size_t len); 
 
 };
-
-extern ssl_layer ssl_aes;
 
 }

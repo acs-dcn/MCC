@@ -14,6 +14,7 @@ using namespace infgen;
 namespace bpo = boost::program_options;
 
 std::string request;
+unsigned req_length;
 
 
 class http_client {
@@ -46,11 +47,12 @@ private:
     bool header_set;
 
     bool request_sent;
+		std::string request_;
     void do_req() {
       //flow->send_packet("GET / HTTP/1.1\r\n"
       //    "HOST: 192.168.2.2\r\n\r\n");
-      flow->send_packet(request);
-	  request_sent = true;
+      flow->send_packet(/*request*/request_);
+			request_sent = true;
       send_ts = system_clock::now();
     }
 
@@ -75,6 +77,7 @@ public:
     stats.acc_delay = 0;
     stats.avg_delay = 0;
     stats.done_reqs = 0;
+
   }
 
 private:
@@ -94,7 +97,12 @@ public:
     for (unsigned i = 0; i < conn_per_core_; i++) {
       auto conn = engine().connect(make_ipv4_address(server_addr));
       auto http_conn = std::make_shared<http_connection>(conn);
-      conns_.push_back(http_conn);
+			http_conn->request_ = std::string(req_length, '0');
+			http_conn->request_[5] = 0x01;
+			http_conn->request_[6] = 0x02;
+			http_conn->request_[7] = 0x01;
+      
+			conns_.push_back(http_conn);
 
       conn->when_recved([this, http_conn] (const connptr& conn) {
         if (!http_conn->header_set) {
@@ -110,7 +118,7 @@ public:
         }
       });
 
-      conn->on_message([http_conn](const connptr& conn, std::string& msg) {
+      conn->on_message([http_conn, this](const connptr& conn, std::string& msg) {
         conn->get_input().consume(msg.size());
         http_conn->complete_request();
         if (conn->get_state() == tcp_connection::state::connected) {
@@ -127,7 +135,7 @@ public:
         conn->reconnect();
       });
 
-      conn->when_ready([http_conn] (const connptr& conn){
+      conn->when_ready([http_conn, this] (const connptr& conn){
         http_conn->do_req();
       });
     }
@@ -173,13 +181,14 @@ int main(int argc, char **argv) {
     auto server = config["dest"].as<std::string>();
     auto total_conn = config["conn"].as<unsigned>();
     auto duration = config["duration"].as<unsigned>();
-	auto length = config["length"].as<unsigned>();
+		auto length = config["length"].as<unsigned>();
 
     if (total_conn % (smp::count-1) != 0) {
       fmt::print("Error: conn needs to be n * cpu_nr \n");
       exit(-1);
     }
 	/* Payload with fixed length */
+		req_length = length;
 	request = std::string(length,'0'); //16, '0'
     request[5] = 0x01;
     request[6] = 0x02;

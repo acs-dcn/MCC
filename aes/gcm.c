@@ -462,17 +462,29 @@ int mbedtls_gcm_crypt_and_tag( mbedtls_gcm_context *ctx,
     int ret;
 
     if( ( ret = mbedtls_gcm_starts( ctx, mode, iv, iv_len, add, add_len ) ) != 0 ) {
-        printf("one\n");
+        if (mode == MBEDTLS_GCM_ENCRYPT) {
+					fprintf(stderr, "Encryption error, failed to start GCM stream.\n");
+				} else {
+					fprintf(stderr, "Decryption error, failed to start GCM stream.\n");
+				}
         return( ret );
     }
 
     if( ( ret = mbedtls_gcm_update( ctx, length, input, output ) ) != 0 ) {
-        printf("two\n");
+        if (mode == MBEDTLS_GCM_ENCRYPT) {
+					fprintf(stderr, "Encryption error, failed to update GCM stream.\n");
+				} else {
+					fprintf(stderr, "Decryption error, failed to update GCM stream.\n");
+				}
         return( ret );
     }
 
     if( ( ret = mbedtls_gcm_finish( ctx, tag, tag_len ) ) != 0 ) {
-        printf("three\n");
+        if (mode == MBEDTLS_GCM_ENCRYPT) {
+					fprintf(stderr, "Encryption error, failed to wrap up the GCM stream.\n");
+				} else {
+					fprintf(stderr, "Decryption error, failed to wrap up the GCM stream.\n");
+				}
         return( ret );
     }
 

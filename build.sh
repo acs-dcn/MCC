@@ -6,6 +6,11 @@ git submodule update
 BUILD_TYPE=release
 SOURCE_DIR=$(pwd)
 
+cd ./aes
+make
+cd ../
+
+
 cd mtcp
 
 if [ ! -d "dpdk/x86_64-native-linuxapp-gcc" ]; then

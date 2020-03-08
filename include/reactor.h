@@ -10,6 +10,8 @@
 #include "mtcp_stack.h"
 #include "thread.h"
 #include "timer.h"
+//@wuwenqing
+#include "ssl_layer.h"
 #include <boost/program_options.hpp>
 
 #include "mtcp_api.h"
@@ -170,9 +172,12 @@ private:
   std::unique_ptr<io_queue> io_queue_;
   // mtcp context, every context is bound to one cpu core
   mctx_t mctx_;
+	//@ wuwenqing, for encryption
+	mbedtls_gcm_context sctx_;
 
 public:
   mctx_t context() { return mctx_; }
+	mbedtls_gcm_context ssl_context() { return sctx_; }
 
 public:
   void add_task(std::unique_ptr<task> &&t) { task_queue_.push(std::move(t)); }

@@ -3,10 +3,6 @@
 #include "io_sched.h"
 #include "mtcp_api.h"
 
-#ifdef AES_GCM
-#include "ssl_layer.h"
-#endif
-
 #include <fstream>
 #include <iostream>
 
@@ -69,10 +65,6 @@ int application::run(int ac, char **av, std::function<void()> &&func) {
   global_logger_registry().set_all_logger_level(log_level);
 
 //  auto stack = configuration["network-stack"].as<std::string>();
-#ifdef AES_GCM
-	// @wuwenqing, for aes_gcm
-	ssl_aes.ssl_init(ssl_aes.sctx_);
-#endif
 
   bpo::notify(configuration);
   try {

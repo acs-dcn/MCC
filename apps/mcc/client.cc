@@ -17,9 +17,6 @@ using namespace std;
 namespace bpo = boost::program_options;
 logger client_logger("client_log", true);
 
-//@ wuwenqing, for dynamic length of payload
-//std::string request_data;
-//std::string heartbeat_data;
 
 class client {
 private:
@@ -76,12 +73,12 @@ private:
   	unsigned pre = 0;
 		unsigned cur = 1;
 
-	while (n-- > 0) {
-		cur += pre;
-		pre = cur - pre;
-	}
+		while (n-- > 0) {
+			cur += pre;
+			pre = cur - pre;
+		}
 
-	return pre;
+		return pre;
   }
 public:
   client(unsigned conns, unsigned epoch, unsigned burst, unsigned setup_time,
@@ -91,9 +88,12 @@ public:
 				req_length_(req_length), prio_grain_(prio_grain),
         heartbeat_(req_length, 0), request_(req_length, 0),
         stats_sec(metrics{}), stats_log(metrics{}){
-			request_[5] = 0x01;
-			request_[6] = 0x02;
-			heartbeat_[8] = 0x08;
+    	request_[5] = 0x01;
+    	request_[6] = 0x02;
+
+    	heartbeat_[5] = 0x00;
+  	  heartbeat_[6] = 0x02;
+  	  heartbeat_[8] = 0x08;
 		}
 
   void set_container(distributor<client>* container) {
@@ -146,9 +146,9 @@ public:
             std::string s = conn->get_input().string();
             conn->get_input().consume(s.size());
 
-			//@ wuwenqing, costing about 80 us
-			//unsigned val = Fibonacci_service(60000); 
-			//request_data[8] = static_cast<int>(val % 127);
+						//@ wuwenqing, costing about 80 us
+						//unsigned val = Fibonacci_service(60000); 
+						//request_[10] = static_cast<int>(val % 127);
 
           });
 
@@ -253,8 +253,8 @@ int main(int argc, char **argv) {
     auto ratio = config["request-ratio"].as<double>();
     auto log_duration = config["log-duration"].as<unsigned>();
     auto dest = config["dest"].as<std::string>();
-		auto length = config["length"].as<unsigned>();
-		auto prio_grain = config["priority-level"].as<unsigned>();
+	auto length = config["length"].as<unsigned>();
+	auto prio_grain = config["priority-level"].as<unsigned>();
 
     fmt::print(
         "configuration: \nconnections: {}\n  epoch: {}\n  burst: {}\n"

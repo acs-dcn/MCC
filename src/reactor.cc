@@ -297,6 +297,9 @@ void reactor::stop() {
 void reactor::configure(boost::program_options::variables_map configuration) {
   network_stack_ = configuration["network-stack"].as<std::string>();
   mode_ = configuration["mode"].as<std::string>();
+	// @wuwenqing
+	ssl_layer::ssl_init(sctx_);
+
   if (network_stack_ == "kernel") {
     pin_this_thread(id_);
     if (!configuration.count("device")) {

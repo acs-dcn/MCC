@@ -61,7 +61,7 @@ size_t mtcp_connection::send(const void *data, size_t len) {
 #ifdef AES_GCM
   try {
 		char ciphertext[1500];
-		ssl_aes.ssl_encrypt(ssl_aes.sctx_, (const unsigned char *)data, (unsigned char*)ciphertext, len);
+		ssl_layer::ssl_encrypt(engine().ssl_context(), (const unsigned char *)data, (unsigned char*)ciphertext, len);
 		len += 21; // Additianal + ciphertext + tag
     nwrite = pfd_->get_mtcp_socket().write((const char*)ciphertext, len);
 #else
@@ -169,7 +169,7 @@ void mtcp_connection::handle_read(connptr con) {
 						net_logger.error("Socket {} in state {}, read data with unexpected length.",
 										sock.get(), (int)get_state());
 					} 
-					ret = ssl_aes.ssl_decrypt(ssl_aes.sctx_, (const unsigned char*)(data_read + 5), (unsigned char*)input_.end(), len_tmp - 21);
+					ret = ssl_layer::ssl_decrypt(engine().ssl_context(), (const unsigned char*)(data_read + 5), (unsigned char*)input_.end(), len_tmp - 21);
 			} else {
 			 	ret = std::nullopt;
 			}

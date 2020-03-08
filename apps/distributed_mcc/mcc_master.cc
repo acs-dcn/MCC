@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
      "number of bursted packets at one time")
     ("port,p", bpo::value<unsigned>()->default_value(2222),
      "bind port")
-    ("ratio,r", bpo::value<double>()->default_value(1.0),
+    ("ratio,r", bpo::value<double>()->default_value(0.05),
      "ratio of request packets")
     ("workers,n", bpo::value<unsigned>()->default_value(1),
      "number of workers");
@@ -62,8 +62,12 @@ int main(int argc, char* argv[]) {
     svr->when_disconnect([&] (const connptr& con) mutable {
       app_logger.info("client {} offline", con->get_id());
       connected[con->get_id()] = 0;
+			tx_packets[con->get_id()] = 0;
+			rx_packets[con->get_id()] = 0;
+
       worker_desc[con->get_id()] = 0;
-      workers_online--;
+      
+			workers_online--;
     });
 
     engine().add_periodic_task_at<infinite>(system_clock::now(), 1s, [&] {

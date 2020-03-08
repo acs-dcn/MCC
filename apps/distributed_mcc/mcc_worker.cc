@@ -28,6 +28,8 @@ private:
   std::vector<connptr> conns_;
   std::vector<int> ref_;
 
+	//@wuwenqing, for fixed length of payload
+	unsigned req_length_;
 
   distributor<client>* container_;
 
@@ -65,12 +67,30 @@ private:
     stats_log.send++;
   }
 
+  unsigned Fibonacci_service(unsigned n) {
+    unsigned pre = 0;
+    unsigned cur = 1;
+
+  	while (n-- > 0) {
+    	cur += pre;
+    	pre = cur - pre;
+  	}
+
+  	return pre;
+  }
+
 public:
   client(unsigned conns, unsigned epoch, unsigned burst, unsigned setup_time, unsigned wait_time,
-         unsigned duration, double ratio)
+         unsigned duration, double ratio, unsigned length)
       : nr_conns_(conns), epoch_(epoch), burst_(burst), setup_time_(setup_time),
-        request_ratio_(ratio), wait_time_(wait_time), stats_sec(metrics{}), stats_log(metrics{}),
-        heartbeat_(30, 0), request_(30, 0), duration_(duration) {
+        request_ratio_(ratio), wait_time_(wait_time), req_length_(length), stats_sec(metrics{}), stats_log(metrics{}),
+        heartbeat_(length, 0), request_(length, 0), duration_(duration) {
+      request_[5] = 0x01;
+      request_[6] = 0x02;
+
+			heartbeat_[5] = 0x00;
+			heartbeat_[6] = 0x02;
+      heartbeat_[8] = 0x08;
       app_logger.info("client created");
   }
 
@@ -121,6 +141,11 @@ public:
             stats_log.received++;
             std::string s = conn->get_input().string();
             conn->get_input().consume(s.size());
+
+
+            //@ wuwenqing, costing about 80 us
+            unsigned val = Fibonacci_service(350000); 
+            request_[10] = static_cast<int>(val % 127);
           });
 
           conn->when_closed([this] {
@@ -190,6 +215,7 @@ public:
 int main(int argc, char **argv) {
   application app;
   app.add_options()
+		("length,i", bpo::value<unsigned>()->default_value(16), "length of message (>8)")
     ("server-ip,s", bpo::value<std::string>(), "server ip address")
     ("server-port,p", bpo::value<unsigned>()->default_value(2222), "server port")
     ("local-ip,l", bpo::value<std::string>(), "local ip address")
@@ -206,6 +232,7 @@ int main(int argc, char **argv) {
     auto log_duration = config["log-duration"].as<unsigned>();
     auto dest = config["dest"].as<std::string>();
     auto verbose = config["verbose"].as<unsigned>();
+		auto length = config["length"].as<unsigned>();
     ipv4_addr addr(ip, port);
     ipv4_addr local(local_ip);
 
@@ -218,6 +245,7 @@ int main(int argc, char **argv) {
     auto loaders = new distributor<client>;
 
     auto conn = engine().connect(make_ipv4_address(addr), make_ipv4_address(local));
+	  app_logger.info("Worker Connecting.\n\n");
     conn->when_ready([&](const connptr& con) {
       app_logger.info("server connected");
       report r;
@@ -257,8 +285,8 @@ int main(int argc, char **argv) {
 
     engine().add_oneshot_task_at(start_tp, [&]() mutable {
       loaders->start(conns / (smp::count-1), epoch, burst / (smp::count-1),
-          setup, wait, duration, ratio);
-      loaders->invoke_on_all(&client::start, ipv4_addr(dest, 1080));
+          setup, wait, duration, ratio, length);
+      loaders->invoke_on_all(&client::start, ipv4_addr(dest, 80));
 
       engine().add_periodic_task_at<infinite> (
           system_clock::now(), 1s, [&]() mutable {
@@ -285,6 +313,10 @@ int main(int argc, char **argv) {
               r.set_rx_packets(received.result());
               std::string packet;
               r.SerializeToString(&packet);
+
+							//@ wuwenqing
+							fmt::print("Total Connected: {}\tsend: {}\treceived: {}\n", 
+								connected.result(), send.result(), received.result());
               if (conn->get_state() == tcp_connection::state::connected) {
                 conn->send_packet(packet);
               } else {
