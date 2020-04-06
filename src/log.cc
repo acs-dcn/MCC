@@ -139,7 +139,8 @@ void logger::really_do_log(log_level level, const char *fmt, const stringer *s,
       fmt::print(logfile_, out.str());
     } else {
       if (level == log_level::error) {
-        fmt::print(fg(fmt::terminal_color::red), out.str());
+        //fmt::print(fg(fmt::terminal_color::red), out.str());
+        fmt::print("\033[31m {} \033[0m\n", out.str());
       } else {
         fmt::print(out.str());
       }

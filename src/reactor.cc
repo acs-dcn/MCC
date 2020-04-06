@@ -261,7 +261,7 @@ void reactor::run() {
   //poll_once();
 
   if (mctx_) {
-    sleep(conns_.size() / 20000);
+    sleep(conns_.size() / 200000);
   }
 
   // I/O thread must be stopped after connection is closed

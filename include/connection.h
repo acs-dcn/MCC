@@ -81,6 +81,8 @@ class tcp_connection : public std::enable_shared_from_this<tcp_connection> {
   socket_address get_local() { return local_; }
 
   static uint64_t nr_conns;
+	//@ wuwenqing, for request counter
+	uint32_t req_cnt_;
 
  protected:
   static const int IN = 0;

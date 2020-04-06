@@ -41,7 +41,11 @@ bool mtcp_epoll_backend::poll(int timeout = 0) {
       try {
         epollfd_.epoll_ctl(op, state->pollid, &ev);
       } catch (std::system_error& e) {
-        epoll_logger.error("fd {} remove events error, {}", state->pollid, e.what());
+				if (op == EPOLL_CTL_MOD) {
+					epoll_logger.error("socket {}, EPOLL_CTL_MOD, {}", state->pollid, e.what());
+				} else {
+					epoll_logger.error("socket {}, EPOLL_CTL_DEL, {}", state->pollid, e.what());
+				}
         //engine().stop();
       }
     }

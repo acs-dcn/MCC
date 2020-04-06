@@ -27,6 +27,7 @@ void mtcp_connection::attach(int sockid, socket_address local, socket_address pe
   fd_ = sockid;
   local_ = local;
   peer_ = peer;
+	req_cnt_ = 0;
 
   assert(pfd_ == nullptr);
   mtcp_socket sock(sockid, engine().context());
@@ -44,13 +45,15 @@ void mtcp_connection::close() {
     net_logger.trace("multiple close detected! please check your code");
     return;
   }
-  state_ = state::closed;
-  pfd_->detach_from_loop();
-  pfd_->close_socket();
-  pfd_ = nullptr;
-  if (on_closed_) {
-    on_closed_();
-  }
+	if (state_ == state::connected) {
+		state_ = state::closed;
+		pfd_->detach_from_loop();
+		pfd_->close_socket();
+		pfd_ = nullptr;
+		if (on_closed_) {
+			on_closed_();
+		}
+	}
 }
 
 size_t mtcp_connection::send(const void *data, size_t len) {
@@ -114,7 +117,7 @@ bool mtcp_connection::send_packet(const buffer &buf) {
 }
 
 void mtcp_connection::reconnect() {
-  net_logger.info("conn {} reconnecting", get_id());
+  net_logger.trace("conn {} reconnecting", get_id());
   auto conn = shared_from_this();
   engine().reconnect(conn);
 }
@@ -165,9 +168,14 @@ void mtcp_connection::handle_read(connptr con) {
 			auto data_len = sock.read(data_read, 1500);
 			if (data_len.has_value()) {
 					int len_tmp = data_len.value();
-					if (len_tmp < 16) {
-						net_logger.error("Socket {} in state {}, read data with unexpected length.",
-										sock.get(), (int)get_state());
+					if (len_tmp == 0) {
+				    // connection closed by peer
+          	state_ = state::disconnect;
+          	cleanup(con);
+          	break;	
+					} else if (len_tmp < 21) {
+						net_logger.error("Socket {} in state {}, read data with unexpected length {}.",
+										sock.get(), (int)get_state(), len_tmp);
 					} 
 					ret = ssl_layer::ssl_decrypt(engine().ssl_context(), (const unsigned char*)(data_read + 5), (unsigned char*)input_.end(), len_tmp - 21);
 			} else {
@@ -179,6 +187,8 @@ void mtcp_connection::handle_read(connptr con) {
       if (ret.has_value()) {
         if (ret.value() == 0) {
           // connection closed by peer
+					//net_logger.error("Socket {} in state {}, can not read any data.",
+					//			sock.get(), (int)get_state());
           state_ = state::disconnect;
           cleanup(con);
           break;
@@ -213,6 +223,8 @@ void mtcp_connection::handle_read(connptr con) {
 
 void mtcp_connection::cleanup(connptr con) {
   net_logger.info("mTCP socket {} closed by peer", pfd_->get_id());
+
+	//state_ = state::closed;
   pfd_->detach_from_loop();
   pfd_->close_socket();
   pfd_ = nullptr;

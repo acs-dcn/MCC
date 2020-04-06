@@ -36,6 +36,8 @@ private:
   unsigned prio_grain_; //priority grain (packet vs. flow)
   std::string heartbeat_;
   std::string request_;
+	const char* req_ptr_;
+	const char* hrt_ptr_;
 
   distributor<client>* container_;
 
@@ -61,12 +63,20 @@ private:
     stats_sec.send++;
     stats_log.request++;
     stats_log.send++;
+		
+		conns_[j]->req_cnt_++;
+		memcpy((void *)req_ptr_, &conns_[j]->req_cnt_, 4);
+		memcpy((void *)hrt_ptr_, &conns_[j]->req_cnt_, 4);
   }
 
   void send_heartbeat(unsigned j) {
     conns_[j]->send_packet(/*heartbeat_data*/ heartbeat_ );
     stats_sec.send++;
     stats_log.send++;
+		
+		conns_[j]->req_cnt_++;
+		memcpy((void *)req_ptr_, &conns_[j]->req_cnt_, 4);
+		memcpy((void *)hrt_ptr_, &conns_[j]->req_cnt_, 4);
   }
 
   unsigned Fibonacci_service(unsigned n) {
@@ -94,6 +104,9 @@ public:
     	heartbeat_[5] = 0x00;
   	  heartbeat_[6] = 0x02;
   	  heartbeat_[8] = 0x08;
+
+			req_ptr_ = request_.data();
+			hrt_ptr_ = heartbeat_.data();
 		}
 
   void set_container(distributor<client>* container) {
@@ -132,6 +145,7 @@ public:
       engine().add_oneshot_task_after(i * 1s, [=] {
         for (unsigned j = 0; j < block; j++) {
           auto conn = engine().connect(make_ipv4_address(server_addr));
+					conn->req_cnt_ = 1;
           conn->when_ready([this] (const connptr& conn) {
             stats_log.connected++;
             stats_sec.connected++;
@@ -146,8 +160,8 @@ public:
             std::string s = conn->get_input().string();
             conn->get_input().consume(s.size());
 
-						//@ wuwenqing, costing about 80 us
-						//unsigned val = Fibonacci_service(60000); 
+						//@ wuwenqing, costing about 300 us
+						//unsigned val = Fibonacci_service(350000); 
 						//request_[10] = static_cast<int>(val % 127);
 
           });
@@ -202,24 +216,24 @@ public:
     for (unsigned i = 0; i < blocks; i++) {
       engine().add_periodic_task_at<infinite>(
           system_clock::now() + i * milliseconds(interval), milliseconds(epoch_), [=] {
-		  	int type_cnt = 0;
+		  			int type_cnt = 0;
             for (unsigned j = i * burst_;
                  j < (i + 1) * burst_ && j < conns_.size(); j++) {
               if (conns_[j]->get_state() == tcp_connection::state::connected) {
-			  	if (prio_grain_ == 1) { // flow-level priority
-					if (ref_[j % burst_] < static_cast<int>(burst_ * request_ratio_)) {
-						send_request(j);
-					} else {
-						send_heartbeat(j);
-					}
-				} else { //packet-level priority
-					if (type_cnt < static_cast<int>(burst_ * request_ratio_)) {
-					  send_request(j);
-					} else {
-					  send_heartbeat(j);
-					}
-					type_cnt += 1;
-				}
+								if (prio_grain_ == 1) { // flow-level priority
+									if (ref_[j % burst_] < static_cast<int>(burst_ * request_ratio_)) {
+										send_request(j);
+									} else {
+										send_heartbeat(j);
+									}
+								} else { //packet-level priority
+									if (type_cnt < static_cast<int>(burst_ * request_ratio_)) {
+										send_request(j);
+									} else {
+										send_heartbeat(j);
+									}
+									type_cnt += 1;
+								}
               }
             }
           });

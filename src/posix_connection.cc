@@ -25,6 +25,7 @@ void posix_connection::attach(int fd, socket_address local, socket_address peer)
   fd_ = fd;
   local_ = local;
   peer_ = peer;
+	req_cnt_ = 0;
 
   assert(pfd_ == nullptr);
   file_desc desc(fd);

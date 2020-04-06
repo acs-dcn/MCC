@@ -33,6 +33,18 @@ private:
     uint64_t tx_bytes;
   } stats;
 
+  unsigned Fibonacci_service(unsigned n) {
+  	unsigned pre = 0;
+		unsigned cur = 1;
+
+		while (n-- > 0) {
+			cur += pre;
+			pre = cur - pre;
+		}
+
+		return pre;
+  }
+
   struct http_connection {
     http_connection(connptr c): flow(c) {}
     connptr flow;
@@ -109,9 +121,15 @@ public:
         }
       });
 
-      conn->on_message([http_conn](const connptr& conn, std::string& msg) {
+      conn->on_message([this, http_conn](const connptr& conn, std::string& msg) {
         conn->get_input().consume(msg.size());
         http_conn->complete_request();
+
+				//@ wuwenqing, costing about 100 us
+        unsigned val = Fibonacci_service(100000); 
+				if (msg.size()) {
+					msg[0] = static_cast<int>(val % 127);
+				}
         if (conn->get_state() == tcp_connection::state::connected) {
           http_conn->do_req();
         }
@@ -252,7 +270,7 @@ int main(int argc, char **argv) {
             fmt::print("=============== summary =========================\n");
             fmt::print("{} requests in {}s, {}MB read\n", total_reqs, secs, rx_bytes / 1024 / 1024);
             fmt::print("request/sec:  {}\n", static_cast<double>(total_reqs) / secs);
-            fmt::print("transfer/sec: {}MB\n", static_cast<double>(rx_bytes / 1024 / 1024) / secs);
+            fmt::print("transfer/sec: {}MB\n", static_cast<double>(rx_bytes) / 1024 / 1024 / secs);
             fmt::print("average delay: {}us\n", avg_delay);
             fmt::print("=============== done ============================\n");
 

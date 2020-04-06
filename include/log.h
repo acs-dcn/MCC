@@ -74,6 +74,7 @@ public:
 
   template <typename... Args> void error(const char *fmt, Args &&... args) {
     log(log_level::error, fmt, std::forward<Args>(args)...);
+		exit(1);
   }
 
   template <typename... Args> void warn(const char *fmt, Args &&... args) {

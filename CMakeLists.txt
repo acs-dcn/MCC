@@ -68,7 +68,7 @@ target_compile_options(infnet
     -Werror
     -Wno-error=deprecated-declarations
 		-g
-#-DAES_GCM
+#		-DAES_GCM
 )
 
 target_link_libraries(infnet 
@@ -87,7 +87,7 @@ target_link_libraries(infnet
     protobuf
 )
 
-add_subdirectory(tests)
+#add_subdirectory(tests)
 add_subdirectory(apps)
 
 

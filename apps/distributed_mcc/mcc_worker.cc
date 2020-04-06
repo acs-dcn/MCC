@@ -30,6 +30,7 @@ private:
 
 	//@wuwenqing, for fixed length of payload
 	unsigned req_length_;
+	system_clock::time_point start_tp_;
 
   distributor<client>* container_;
 
@@ -81,9 +82,9 @@ private:
 
 public:
   client(unsigned conns, unsigned epoch, unsigned burst, unsigned setup_time, unsigned wait_time,
-         unsigned duration, double ratio, unsigned length)
+         unsigned duration, double ratio, unsigned length, system_clock::time_point start_tp)
       : nr_conns_(conns), epoch_(epoch), burst_(burst), setup_time_(setup_time),
-        request_ratio_(ratio), wait_time_(wait_time), req_length_(length), stats_sec(metrics{}), stats_log(metrics{}),
+        request_ratio_(ratio), wait_time_(wait_time), req_length_(length), start_tp_(start_tp), stats_sec(metrics{}), stats_log(metrics{}),
         heartbeat_(length, 0), request_(length, 0), duration_(duration) {
       request_[5] = 0x01;
       request_[6] = 0x02;
@@ -113,6 +114,9 @@ public:
     stats_log.send = 0;
     stats_log.request = 0;
     stats_log.received = 0;
+  }
+  void stop() {
+    engine().stop();
   }
 
   void start(ipv4_addr server_addr) {
@@ -144,7 +148,7 @@ public:
 
 
             //@ wuwenqing, costing about 80 us
-            unsigned val = Fibonacci_service(350000); 
+						unsigned val = Fibonacci_service(80000); 
             request_[10] = static_cast<int>(val % 127);
           });
 
@@ -154,6 +158,12 @@ public:
           });
 
           conn->when_failed([this] (const connptr& conn) {
+						// @ wuwenqing
+            stats_sec.connected--;
+            stats_sec.retry++;
+
+            stats_log.connected--;
+            stats_log.retry++;
             conn->reconnect();
           });
 
@@ -172,6 +182,7 @@ public:
     }
 
     engine().add_oneshot_task_after(seconds(wait_time_ + setup_time_),
+    //engine().add_oneshot_task_at(start_tp_,
                                     [this] { do_req(); });
 
     engine().add_oneshot_task_after(seconds(duration_), [this] {
@@ -283,9 +294,13 @@ int main(int argc, char **argv) {
             conns, epoch, burst, smp::count-1);
       }
 
+		system_clock::time_point start_point;
+    start_point += milliseconds(start_ts);
+		start_point += seconds(setup);
+		start_point += seconds(wait);
     engine().add_oneshot_task_at(start_tp, [&]() mutable {
       loaders->start(conns / (smp::count-1), epoch, burst / (smp::count-1),
-          setup, wait, duration, ratio, length);
+          setup, wait, duration, ratio, length, start_point);
       loaders->invoke_on_all(&client::start, ipv4_addr(dest, 80));
 
       engine().add_periodic_task_at<infinite> (
@@ -348,10 +363,14 @@ int main(int argc, char **argv) {
           send_log.reset();
           received_log.reset();
       });
-    });
+			// @ wuwenqing
+   		engine().add_oneshot_task_after(seconds(duration + 5), [&] {
+      	loaders->stop();
+    	});
 
+    }); // engine().add_oneshot_task_at
 
-    });
+    }); //when_recved()
 
     engine().run();
   });

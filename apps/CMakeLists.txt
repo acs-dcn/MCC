@@ -22,4 +22,7 @@ add_subdirectory(distributed_mcc)
 add_subdirectory(http_loader)
 #add_subdirectory(echo_client)
 add_subdirectory(distributed_http_loader)
+# @wuwenqing
+add_subdirectory(wan_loader)
+
 

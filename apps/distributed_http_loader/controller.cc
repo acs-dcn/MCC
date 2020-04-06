@@ -117,8 +117,8 @@ int main(int argc, char* argv[]) {
           fmt::print("===============summary============================\n");
           fmt::print("{} requests in {} s, {} MB read\n", 
               total_reqs, duration, total_rx / 1024 / 1024);
-          fmt::print("request/sec: {}\n", total_reqs / duration);
-          fmt::print("transfer/sec: {} MB\n", total_rx / 1024 / 1024 / duration);
+          fmt::print("request/sec: {}\n", static_cast<double>(total_reqs) / duration);
+          fmt::print("transfer/sec: {} MB\n", static_cast<double>(total_rx) / 1024 / 1024 / duration);
           fmt::print("average delay: {} us\n", avg_delay / workers);
           fmt::print("==================================================\n");
           engine().stop();
