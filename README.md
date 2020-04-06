@@ -95,9 +95,9 @@ You need to add static ARP entry and static route entry.
 ### Roadmap
 
 + Extend to distributed systems.
-+ Simulating complicated WAN workload.
 + Stateless load generation.
-+ Replaying captured traffic in a controlable manner. 
++ Simulating complicated WAN workload.
++ Generating application-level network load.. 
 
 ### Contacts
 
