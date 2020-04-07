@@ -7,7 +7,23 @@ MCC is a predictable and highly scalable network load generator used for simulat
 
 ### Release Notes
 
+**V 1.2**
+
+Add suport for application-level load generation
+
++ Encryption/decryption
++ Simulating response processing
++ Modeling for packet length and inter-departure time
+
+**V 1.1**
+
+Add supprt for paket-level priority
+
++ MCC only supports flow-level priority before, which means packets in the same flow hold the same priority for MCC v1.0. To meet more needs, we add support for packet-level priority.
+
 **V 1.0**
+
+Multicore scalable network load generator based on userspace stack.
 
 + User-level-stack-based
 + Reactor pattern
