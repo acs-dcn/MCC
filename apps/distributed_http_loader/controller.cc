@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
         fmt::print("\nstats from client {}:\n", client_id);
         fmt::print("requests: {}\n", r.completes());
         fmt::print("delay: {} us\n", r.delay());
-        fmt::print("rx: {} MB\n\n", r.rx_bytes() / 1024 / 1024);
+        fmt::print("rx: {} MB\n\n", static_cast<double>(r.rx_bytes()) / 1024 / 1024);
 
         total_reqs += r.completes();
         avg_delay += r.delay();
@@ -116,10 +116,10 @@ int main(int argc, char* argv[]) {
           app_logger.info("workers done!");
           fmt::print("===============summary============================\n");
           fmt::print("{} requests in {} s, {} MB read\n", 
-              total_reqs, duration, total_rx / 1024 / 1024);
+              total_reqs, duration, static_cast<double>(total_rx) / 1024 / 1024);
           fmt::print("request/sec: {}\n", static_cast<double>(total_reqs) / duration);
           fmt::print("transfer/sec: {} MB\n", static_cast<double>(total_rx) / 1024 / 1024 / duration);
-          fmt::print("average delay: {} us\n", avg_delay / workers);
+          fmt::print("average delay: {} us\n", static_cast<double>(avg_delay) / workers);
           fmt::print("==================================================\n");
           engine().stop();
         }

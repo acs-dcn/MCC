@@ -10,7 +10,7 @@ namespace bpo = boost::program_options;
 int main(int argc, char* argv[]) {
   application app;
   app.add_options()
-    ("epoch,e", bpo::value<unsigned>()->default_value(1),
+    ("epoch,e", bpo::value<float>()->default_value(1.0),
       "the repeat period(s)")
     ("connections,c", bpo::value<unsigned>()->default_value(1),
      "number of concurrent connections")
@@ -24,20 +24,23 @@ int main(int argc, char* argv[]) {
      "number of bursted packets at one time")
     ("port,p", bpo::value<unsigned>()->default_value(2222),
      "bind port")
-    ("ratio,r", bpo::value<double>()->default_value(0.05),
+    ("ratio,r", bpo::value<float>()->default_value(0.05),
      "ratio of request packets")
+		("length,i", bpo::value<unsigned>()->default_value(16), 
+		 "length of each request (>8)")
     ("workers,n", bpo::value<unsigned>()->default_value(1),
      "number of workers");
   app.run(argc, argv, [&]() {
     auto config = app.configuration();
-    auto epoch = config["epoch"].as<unsigned>();
+    auto epoch = static_cast<unsigned>(1000 * config["epoch"].as<float>()); // Milliseconds
     auto conn = config["connections"].as<unsigned>();
     auto setup_time = config["setup-time"].as<unsigned>();
     auto wait_time = config["wait-time"].as<unsigned>();
     auto duration = config["duration"].as<unsigned>();
     auto burst = config["burst"].as<unsigned>();
     auto port = config["port"].as<unsigned>();
-    auto ratio = config["ratio"].as<double>();
+    auto ratio = config["ratio"].as<float>();
+		auto length = config["length"].as<unsigned>();
     auto workers = config["workers"].as<unsigned>();
 
     unsigned workers_online = 0;
@@ -110,6 +113,7 @@ int main(int argc, char* argv[]) {
           cmd.set_setup_time(setup_time);
           cmd.set_wait_time(wait_time);
           cmd.set_duration(duration);
+					cmd.set_length(length);
           cmd.set_ratio(ratio);
           auto tp = system_clock::now() + 3000ms;
           auto start_ts = duration_cast<milliseconds>(tp.time_since_epoch()).count();

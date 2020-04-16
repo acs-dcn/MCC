@@ -6,10 +6,13 @@ git submodule update
 BUILD_TYPE=release
 SOURCE_DIR=$(pwd)
 
-cd ./aes
-make
-cd ../
+rm -f lib/*
 
+cd ./src/aes/
+make
+cd ../stream_gen/
+make
+cd ../../
 
 cd mtcp
 
@@ -24,6 +27,7 @@ cd ..
 cd proto
 protoc --cpp_out=. http.proto
 protoc --cpp_out=. mcc.proto
+protoc --cpp_out=. wan.proto
 cd ..
 mkdir -p build/$BUILD_TYPE
 cd build/$BUILD_TYPE

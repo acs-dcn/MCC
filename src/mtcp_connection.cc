@@ -63,7 +63,8 @@ size_t mtcp_connection::send(const void *data, size_t len) {
   size_t nwrite = 0;
 #ifdef AES_GCM
   try {
-		char ciphertext[1500];
+		char ciphertext[1500]; // buffer
+
 		ssl_layer::ssl_encrypt(engine().ssl_context(), (const unsigned char *)data, (unsigned char*)ciphertext, len);
 		len += 21; // Additianal + ciphertext + tag
     nwrite = pfd_->get_mtcp_socket().write((const char*)ciphertext, len);

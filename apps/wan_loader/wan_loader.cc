@@ -23,6 +23,7 @@ private:
 
 	unsigned nr_interact_t_; /// times of interaction per connection, default 1
 	unsigned len_mode_;	 		 /// Fixed length or Random length
+	unsigned idt_mode_;	 		 /// Fixed inter-departure time or Random IDT
 	unsigned length_;				 /// Length of payload
 	unsigned lambda_;        /// Parameter of Poisson Distribution
 
@@ -74,12 +75,14 @@ private:
     
     unsigned header_len;
 		unsigned lmode_;
+		unsigned imode_;
     unsigned len_;
     bool header_set;
 		
 		unsigned nr_interact_;      /// times of interaction per connection, default 1
 		unsigned lam_;
 		std::vector<unsigned> lens_;/// Payload size of each request
+		std::vector<unsigned> idts_;/// Payload size of each request
 
 		void cl_stat() {
 			nr_snd = 0;
@@ -88,12 +91,17 @@ private:
 			nr_resp = 0;
 		}
 
-		void generate_seq() {
+		void app_modeling() {
 			std::minstd_rand engine(time(NULL));
 			std::poisson_distribution<unsigned> distribution(lam_);
 
-			for (unsigned i = 0; i < nr_interact_; ++i) {
-				lens_.push_back(distribution(engine) % 513);
+			unsigned tmp = distribution(engine);
+			idts_.push_back(tmp + 2); //start time
+			lens_.push_back(tmp % 513);
+			for (unsigned i = 1; i < nr_interact_; ++i) {
+				tmp = distribution(engine);
+				lens_.push_back(tmp % 513);
+				idts_.push_back(idts_[i-1] + tmp);
 			}
 		}
 
@@ -101,12 +109,19 @@ private:
       //flow->send_packet("GET / HTTP/1.1\r\n"
       //    "HOST: 192.168.2.2\r\n\r\n");
 			std::string req;
+			size_t size = lens_.size();
 			if (lmode_ == 1) {
 				req = std::string(len_, '0');
 			} else {
-				auto size = lens_.size();
 				req = std::string(lens_[size - nr_interact_], '0');
 			}
+			// Write timestamp
+			if (imode_ == 1) {
+			} else {
+				char * rptr = req.data();
+				memcpy((void *)rptr, &idts_[size - nr_interact_], 4);
+			}
+
 			req[5] = 0x01;
 			req[6] = 0x02;
 
@@ -133,10 +148,12 @@ private:
   };
 
 public:
-  http_client(unsigned total_conn, unsigned duration, unsigned concurrency,
-							unsigned nr_interact, unsigned len_mode, unsigned length, unsigned lambda)
-      : total_conn_(total_conn), duration_(duration), conn_per_core_(concurrency / (smp::count-1)), 
-			nr_interact_t_(nr_interact), len_mode_(len_mode), length_(length), lambda_(lambda){
+  http_client(unsigned concurrency, unsigned duration, 
+							unsigned nr_interact, unsigned len_mode, unsigned idt_mode, 
+							unsigned length, unsigned lambda)
+      : total_conn_(concurrency), duration_(duration), conn_per_core_(concurrency / (smp::count-1)), 
+			nr_interact_t_(nr_interact), len_mode_(len_mode), idt_mode_(idt_mode),
+			length_(length), lambda_(lambda){
 		stats.nr_done = 0;
 		stats.nr_connected = 0;
 		stats.nr_sent = 0;
@@ -163,9 +180,10 @@ public:
 				stats.nr_connected++;
 			  http_conn->nr_interact_ = nr_interact_t_;
 				http_conn->lmode_ = len_mode_;
+				http_conn->imode_ = idt_mode_;
 				http_conn->len_ = length_;
 				http_conn->lam_ = lambda_;
-				http_conn->generate_seq();
+				http_conn->app_modeling();
 
 				//fmt::print("\033[31 conn {} ready, nr_interact {}.\033[0m\n", conn->get_id(), http_conn->nr_interact_);
 				http_conn->do_req();
@@ -277,7 +295,8 @@ int main(int argc, char **argv) {
   application app;
   app.add_options()
     ("conn,c", bpo::value<unsigned>()->default_value(100), "Total connections")
-		("length-mode,m", bpo::value<unsigned>()->default_value(1), "1 for fixed size, 2 for random size")
+		("length-mode,g", bpo::value<unsigned>()->default_value(1), "1 for fixed size, 2 for random size")
+		("idt-mode,j", bpo::value<unsigned>()->default_value(1), "1 for fixed IDT, 2 for random IDT")
 		("length,l", bpo::value<unsigned>()->default_value(16), "Length of message with fixed size(> 8)")
     ("lambda,a", bpo::value<unsigned>()->default_value(32), "Parameter of Poisson distribution")
     ("interact-number,i", bpo::value<unsigned>()->default_value(1), "Times of interactions per connection")
@@ -289,6 +308,7 @@ int main(int argc, char **argv) {
     auto total_conn = config["conn"].as<unsigned>();
     auto nr_interact = config["interact-number"].as<unsigned>();
 		auto len_mode = config["length-mode"].as<unsigned>();
+		auto idt_mode = config["idt-mode"].as<unsigned>();
     auto length = config["length"].as<unsigned>();
 		auto lambda = config["lambda"].as<unsigned>();
 		auto verbose = config["verbose"].as<unsigned>();
@@ -305,7 +325,7 @@ int main(int argc, char **argv) {
 		}
 
     auto clients = new distributor<http_client>;
-    clients->start(total_conn, duration, total_conn, nr_interact, len_mode, length, lambda);
+    clients->start(total_conn, duration, nr_interact, len_mode, idt_mode, length, lambda);
 
     //auto started = system_clock::now();
 		fmt::print("\n== WAN Loader ==================================\n");
@@ -371,6 +391,7 @@ int main(int argc, char **argv) {
 
 		fmt::print("\n== WAN Loader ==================================\n");
 		fmt::print(" Test Done\n");				
+		fmt::print(" {} requests in {}s\n", reqs, secs);
 		fmt::print(" Transfer / sec: {}\n", static_cast<double>(reqs) / secs);				
 		fmt::print("================================================\n\n");
 

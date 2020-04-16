@@ -55,7 +55,7 @@ private:
   }
 
   void send_request(unsigned j) {
-    conns_[j]->send_packet(heartbeat_);
+    conns_[j]->send_packet(request_);
     stats_sec.request++;
     stats_sec.send++;
     stats_log.request++;
@@ -63,7 +63,7 @@ private:
   }
 
   void send_heartbeat(unsigned j) {
-    conns_[j]->send_packet(request_);
+    conns_[j]->send_packet(heartbeat_);
     stats_sec.send++;
     stats_log.send++;
   }
@@ -203,11 +203,11 @@ public:
 
   void do_req() {
     auto blocks = conns_.size() / burst_;
-    auto interval = epoch_ * 1000 / blocks;
+    auto interval = epoch_ / blocks;
 
     for (unsigned i = 0; i < blocks; i++) {
       engine().add_periodic_task_at<infinite>(
-        system_clock::now() + i * milliseconds(interval), seconds(epoch_), [=] {
+        system_clock::now() + i * milliseconds(interval), milliseconds(epoch_), [=] {
           for (unsigned j = i * burst_;
                j < (i + 1) * burst_ && j < conns_.size(); j++) {
             if (conns_[j]->get_state() == tcp_connection::state::connected) {
@@ -226,7 +226,6 @@ public:
 int main(int argc, char **argv) {
   application app;
   app.add_options()
-		("length,i", bpo::value<unsigned>()->default_value(16), "length of message (>8)")
     ("server-ip,s", bpo::value<std::string>(), "server ip address")
     ("server-port,p", bpo::value<unsigned>()->default_value(2222), "server port")
     ("local-ip,l", bpo::value<std::string>(), "local ip address")
@@ -243,11 +242,10 @@ int main(int argc, char **argv) {
     auto log_duration = config["log-duration"].as<unsigned>();
     auto dest = config["dest"].as<std::string>();
     auto verbose = config["verbose"].as<unsigned>();
-		auto length = config["length"].as<unsigned>();
     ipv4_addr addr(ip, port);
     ipv4_addr local(local_ip);
 
-    uint64_t conns, burst, epoch, start_ts, wait, duration, setup;
+    uint64_t conns, burst, epoch, start_ts, wait, duration, setup, length;
     double ratio;
     system_clock::time_point start_tp;
 
@@ -283,15 +281,16 @@ int main(int argc, char **argv) {
       wait = cmd.wait_time();
       duration = cmd.duration();
       ratio = cmd.ratio();
+			length = cmd.length();
       start_ts = cmd.start_ts();
 
       start_tp += milliseconds(start_ts);
 
       if (verbose) {
         fmt::print(
-            "configuration: \n\tconnections: {}\n\tepoch: {}\n\t"
+            "configuration: \n\tconnections: {}\n\tepoch: {}s\n\t"
             "burst: {}\n" "\tthreads: {}\n\t",
-            conns, epoch, burst, smp::count-1);
+            conns, static_cast<float>(epoch)/1000, burst, smp::count-1);
       }
 
 		system_clock::time_point start_point;

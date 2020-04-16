@@ -10,8 +10,8 @@ find_package(dpdk REQUIRED)
 set(MTCP_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/mtcp/mtcp/include")
 set(MTCP_LIBRARY_PATH "${PROJECT_SOURCE_DIR}/mtcp/mtcp/lib")
 set(DPDK_LIBRARY_PATH "$ENV{RTE_SDK}/$ENV{RTE_TARGET/lib}")
-set(AES_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/aes")
-set(AES_LIBRARY_PATH "${PROJECT_SOURCE_DIR}/aes")
+set(AES_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/src/aes")
+set(AES_LIBRARY_PATH "${PROJECT_SOURCE_DIR}/lib")
 
 set (CMAKE_BUILD_TYPE
   "${CMAKE_BUILD_TYPE}"
@@ -68,7 +68,7 @@ target_compile_options(infnet
     -Werror
     -Wno-error=deprecated-declarations
 		-g
-#		-DAES_GCM
+#-DAES_GCM
 )
 
 target_link_libraries(infnet 
