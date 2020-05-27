@@ -7,6 +7,13 @@ MCC is a scalable network workload generator based on user-space stack. It can r
 
 ### Release Notes
 
+**V 2.0**
+
+Add support for distributed mode and stateless workload generation
+
++ Distributed
++ Stateful/Stateless
+
 **V 1.2**
 
 Add suport for application-level load generation
