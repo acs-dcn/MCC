@@ -38,7 +38,7 @@ Multicore scalable network load generator based on userspace stack.
 
 ### Architecture
  
- <img src="images/mcc_architecture_dis.pdf" width = "600" height = "250" alt="" align=center />
+ <img src="images/mcc_architecture_dis.png" width = "600" height = "250" alt="" align=center />
 
 
 ### Prerequisites
