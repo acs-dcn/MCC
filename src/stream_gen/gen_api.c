@@ -52,7 +52,7 @@ struct rte_mempool*             mp;
 struct hash_table               hash_buf;          //hash table
 int         nb_stream;
 /* commandline arguments */
-int         nb_concur = 10;
+int         nb_concur = 144;
 int         nb_snd_thread = 1;
 int         mode_run = 1;
 int         len_cut = 5;

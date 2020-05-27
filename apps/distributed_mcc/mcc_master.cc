@@ -28,6 +28,8 @@ int main(int argc, char* argv[]) {
      "ratio of request packets")
 		("length,i", bpo::value<unsigned>()->default_value(16), 
 		 "length of each request (>8)")
+		("think-time,t", bpo::value<int>()->default_value(50000), 
+		 "think time between requests (ns)")
     ("workers,n", bpo::value<unsigned>()->default_value(1),
      "number of workers");
   app.run(argc, argv, [&]() {
@@ -41,6 +43,7 @@ int main(int argc, char* argv[]) {
     auto port = config["port"].as<unsigned>();
     auto ratio = config["ratio"].as<float>();
 		auto length = config["length"].as<unsigned>();
+		auto think_time = config["think-time"].as<int>();
     auto workers = config["workers"].as<unsigned>();
 
     unsigned workers_online = 0;
@@ -78,9 +81,9 @@ int main(int argc, char* argv[]) {
       std::time_t t = std::time(nullptr);
       fmt::print("{:%Y-%m-%d %T}\n", fmt::localtime(t));
       fmt::print("\n");
-      fmt::print("Node\t\tStatus\t\tConnected\t\tTx\t\tRx\t\n");
+      fmt::print("Node\tStatus\tConnected\tTx\t\tRx\t\n");
       for (unsigned i = 0; i < workers; i++) {
-        fmt::print("{}\t\t{}\t\t{}\t\t\t{}\t\t{}\n", i, status[worker_desc[i]],
+        fmt::print("{}\t{}\t{}\t\t{}\t\t{}\n", i, status[worker_desc[i]],
             connected[i], tx_packets[i], rx_packets[i]);
         //tx_packets[i] = 0;
         //rx_packets[i] = 0;
@@ -114,6 +117,7 @@ int main(int argc, char* argv[]) {
           cmd.set_wait_time(wait_time);
           cmd.set_duration(duration);
 					cmd.set_length(length);
+					cmd.set_think_time(think_time);
           cmd.set_ratio(ratio);
           auto tp = system_clock::now() + 3000ms;
           auto start_ts = duration_cast<milliseconds>(tp.time_since_epoch()).count();

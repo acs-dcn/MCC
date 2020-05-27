@@ -30,6 +30,7 @@ private:
 
 	//@wuwenqing, for fixed length of payload
 	unsigned req_length_;
+	int think_time_; //ns
 	system_clock::time_point start_tp_;
 
   distributor<client>* container_;
@@ -68,11 +69,12 @@ private:
     stats_log.send++;
   }
 
-  unsigned Fibonacci_service(unsigned n) {
+  unsigned Fibonacci_service(int delay) { /// ns
     unsigned pre = 0;
     unsigned cur = 1;
+		int loops = delay * 0.75;
 
-  	while (n-- > 0) {
+  	while (loops-- > 0) {
     	cur += pre;
     	pre = cur - pre;
   	}
@@ -82,9 +84,9 @@ private:
 
 public:
   client(unsigned conns, unsigned epoch, unsigned burst, unsigned setup_time, unsigned wait_time,
-         unsigned duration, double ratio, unsigned length, system_clock::time_point start_tp)
+         unsigned duration, double ratio, unsigned length, int think_time, system_clock::time_point start_tp)
       : nr_conns_(conns), epoch_(epoch), burst_(burst), setup_time_(setup_time),
-        request_ratio_(ratio), wait_time_(wait_time), req_length_(length), start_tp_(start_tp), stats_sec(metrics{}), stats_log(metrics{}),
+        request_ratio_(ratio), wait_time_(wait_time), req_length_(length), think_time_(think_time), start_tp_(start_tp), stats_sec(metrics{}), stats_log(metrics{}),
         heartbeat_(length, 0), request_(length, 0), duration_(duration) {
       request_[5] = 0x01;
       request_[6] = 0x02;
@@ -145,11 +147,9 @@ public:
             stats_log.received++;
             std::string s = conn->get_input().string();
             conn->get_input().consume(s.size());
-
-
-            //@ wuwenqing, costing about 80 us
-						unsigned val = Fibonacci_service(80000); 
-            request_[10] = static_cast<int>(val % 127);
+      			// "Think time"
+						unsigned val = Fibonacci_service(think_time_); 
+            request_[9] = static_cast<int>(val % 127);
           });
 
           conn->when_closed([this] {
@@ -246,6 +246,7 @@ int main(int argc, char **argv) {
     ipv4_addr local(local_ip);
 
     uint64_t conns, burst, epoch, start_ts, wait, duration, setup, length;
+		int think_time;
     double ratio;
     system_clock::time_point start_tp;
 
@@ -282,6 +283,7 @@ int main(int argc, char **argv) {
       duration = cmd.duration();
       ratio = cmd.ratio();
 			length = cmd.length();
+			think_time = cmd.think_time();
       start_ts = cmd.start_ts();
 
       start_tp += milliseconds(start_ts);
@@ -299,7 +301,7 @@ int main(int argc, char **argv) {
 		start_point += seconds(wait);
     engine().add_oneshot_task_at(start_tp, [&]() mutable {
       loaders->start(conns / (smp::count-1), epoch, burst / (smp::count-1),
-          setup, wait, duration, ratio, length, start_point);
+          setup, wait, duration, ratio, length, think_time, start_point);
       loaders->invoke_on_all(&client::start, ipv4_addr(dest, 80));
 
       engine().add_periodic_task_at<infinite> (

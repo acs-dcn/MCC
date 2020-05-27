@@ -16,6 +16,8 @@ int main(int argc, char* argv[]) {
      "number of concurrent connections")
     ("duration,d", bpo::value<unsigned>()->default_value(1),
      "test duration")
+		("think-time,t", bpo::value<int>()->default_value(50000),
+		 "think time between requests (ns)")
     ("port,p", bpo::value<unsigned>()->default_value(2222),
      "server bind port")
     ("workers,n", bpo::value<unsigned>()->default_value(1),
@@ -24,6 +26,7 @@ int main(int argc, char* argv[]) {
     auto config = app.configuration();
     auto conn = config["connections"].as<unsigned>();
     auto duration = config["duration"].as<unsigned>();
+		auto think_time = config["think-time"].as<int>();
     auto port = config["port"].as<unsigned>();
     auto workers = config["workers"].as<unsigned>();
 
@@ -77,6 +80,7 @@ int main(int argc, char* argv[]) {
           command cmd;
           cmd.set_conn(conn);
           cmd.set_duration(duration);
+					cmd.set_think_time(think_time);
           // set the start timer to 3s later
           auto tp = system_clock::now();
           app_logger.trace("now: {}", 

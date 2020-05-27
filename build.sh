@@ -6,7 +6,10 @@ git submodule update
 BUILD_TYPE=release
 SOURCE_DIR=$(pwd)
 
-rm -f lib/*
+export RTE_SDK=$PWD/mtcp/dpdk
+export RTE_TARGET=x86_64-native-linuxapp-gcc
+
+rm -f lib/*.a
 
 cd ./src/aes/
 make
@@ -19,9 +22,6 @@ cd mtcp
 if [ ! -d "dpdk/x86_64-native-linuxapp-gcc" ]; then
   ./build_dpdk.sh
 fi
-
-export RTE_SDK=$PWD/dpdk
-export RTE_TARGET=x86_64-native-linuxapp-gcc
 
 cd ..
 cd proto

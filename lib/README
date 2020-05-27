@@ -1,0 +1,9 @@
+Static libraries
+
+### libaes.a 
+
+library for AES encryption/decryption.
+
+### libsgen.a
+
+library for stream_gen which is a oneway TCP stream simulator with trace file based on DPDK.

@@ -21,6 +21,7 @@ private:
   unsigned duration_;
   unsigned conn_per_core_;
   uint64_t conn_finished_{0};
+	int think_time_; /// ns
 
   ipv4_addr server_addr_;
   distributor<http_client>* container_;
@@ -33,11 +34,12 @@ private:
     uint64_t tx_bytes;
   } stats;
 
-  unsigned Fibonacci_service(unsigned n) {
+  unsigned Fibonacci_service(int delay) {
   	unsigned pre = 0;
 		unsigned cur = 1;
+		int loops = delay * 0.75;
 
-		while (n-- > 0) {
+		while (loops-- > 0) {
 			cur += pre;
 			pre = cur - pre;
 		}
@@ -81,8 +83,9 @@ private:
   };
 
 public:
-  http_client(unsigned duration, unsigned concurrency)
-      : duration_(duration), conn_per_core_(concurrency / (smp::count-1)) {
+  http_client(unsigned duration, unsigned concurrency, int think_time)
+      : duration_(duration), conn_per_core_(concurrency / (smp::count-1)),
+				think_time_(think_time){
     stats.acc_delay = 0;
     stats.avg_delay = 0;
     stats.done_reqs = 0;
@@ -125,8 +128,8 @@ public:
         conn->get_input().consume(msg.size());
         http_conn->complete_request();
 
-				//@ wuwenqing, costing about 100 us
-        unsigned val = Fibonacci_service(100000); 
+				//@ processing time (ns)
+        unsigned val = Fibonacci_service(think_time_); 
 				if (msg.size()) {
 					msg[0] = static_cast<int>(val % 127);
 				}
@@ -199,6 +202,7 @@ int main(int argc, char **argv) {
     ipv4_addr local_addr(local_ip);
 
     uint64_t conns, duration;
+		int think_time;
     int64_t start_ts;
     system_clock::time_point start_tp;
 
@@ -228,8 +232,8 @@ int main(int argc, char **argv) {
 
       conns = cmd.conn();
       duration = cmd.duration();
+			think_time = cmd.think_time();
       start_ts = cmd.start_ts();
-
 
       start_tp = start_tp + milliseconds(start_ts);
 
@@ -243,7 +247,7 @@ int main(int argc, char **argv) {
       }
 
       engine().add_oneshot_task_at(start_tp, [&, conn]() mutable {
-        clients->start(duration, conns);
+        clients->start(duration, conns, think_time);
 
         started = system_clock::now();
         fmt::print("connections: {}\n", conns);

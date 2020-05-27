@@ -23,7 +23,8 @@ message command {
   uint32 setup_time = 5;
   uint32 wait_time = 6;
   uint32 duration = 7;
-  uint32 length = 9;
-  float ratio = 8;
+  uint32 length = 8;
+	int32 think_time = 9;
+  float ratio = 10;
 }
 

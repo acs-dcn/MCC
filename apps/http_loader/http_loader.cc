@@ -22,6 +22,7 @@ private:
   unsigned duration_;
   unsigned conn_per_core_;
   uint64_t conn_finished_{0};
+	int think_time_;
 
   ipv4_addr server_addr_;
   distributor<http_client>* container_;
@@ -33,6 +34,19 @@ private:
     uint64_t rx_bytes;
     uint64_t tx_bytes;
   } stats;
+
+  unsigned Fibonacci_service(int delay) {
+    unsigned pre = 0;
+    unsigned cur = 1;
+    int loops = delay * 0.75;
+
+    while (loops-- > 0) {
+      cur += pre;
+      pre = cur - pre;
+    }   
+
+    return pre;
+  }
 
   struct http_connection {
     http_connection(connptr c): flow(c) {}
@@ -72,8 +86,9 @@ private:
   };
 
 public:
-  http_client(unsigned duration, unsigned concurrency)
-      : duration_(duration), conn_per_core_(concurrency / (smp::count-1)) {
+  http_client(unsigned duration, unsigned concurrency, int think_time)
+      : duration_(duration), conn_per_core_(concurrency / (smp::count-1)),
+				think_time_(think_time){
     stats.acc_delay = 0;
     stats.avg_delay = 0;
     stats.done_reqs = 0;
@@ -120,6 +135,13 @@ public:
 
       conn->on_message([http_conn, this](const connptr& conn, std::string& msg) {
         conn->get_input().consume(msg.size());
+
+				// processing time (ns)
+				unsigned val = Fibonacci_service(think_time_);
+        if (msg.size()) {
+          msg[0] = static_cast<int>(val % 127);
+        }
+
         http_conn->complete_request();
         if (conn->get_state() == tcp_connection::state::connected) {
           http_conn->do_req();
@@ -175,12 +197,14 @@ int main(int argc, char **argv) {
   app.add_options()
 		("length,l", bpo::value<unsigned>()->default_value(16), "length of message (> 8)")
     ("conn,c", bpo::value<unsigned>()->default_value(100), "total connections")
+		("think-time,t", bpo::value<int>()->default_value(0), "think time between requests (ns)")
     ("duration,d", bpo::value<unsigned>()->default_value(0), "duration of test in seconds");
   app.run(argc, argv, [&app] {
     auto &config = app.configuration();
     auto server = config["dest"].as<std::string>();
     auto total_conn = config["conn"].as<unsigned>();
     auto duration = config["duration"].as<unsigned>();
+		auto think_time = config["think-time"].as<int>();
 		auto length = config["length"].as<unsigned>();
 
     if (total_conn % (smp::count-1) != 0) {
@@ -195,7 +219,7 @@ int main(int argc, char **argv) {
     request[7] = 0x01;
 
     auto clients = new distributor<http_client>;
-    clients->start(duration, total_conn);
+    clients->start(duration, total_conn, think_time);
 
     //auto started = system_clock::now();
     system_clock::time_point started;

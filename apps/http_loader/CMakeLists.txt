@@ -5,6 +5,5 @@ infgen_add_app(http_loader
 add_custom_command(
   TARGET http_loader
   POST_BUILD
-  COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/ip_setup.sh ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND cp -r ${CMAKE_CURRENT_SOURCE_DIR}/config ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND cp -r ${CMAKE_SOURCE_DIR}/config ${CMAKE_CURRENT_BINARY_DIR}
 )

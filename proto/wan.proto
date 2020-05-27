@@ -19,6 +19,7 @@ message command {
 	uint32 length = 5;
 	uint32 idt_mode = 6;
 	uint32 lambda = 7;
-  uint32 interact_number = 8;
+  uint32 interact_times = 8;
+	int32 think_time = 9;
 }
 

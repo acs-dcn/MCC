@@ -48,9 +48,6 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-# all source are stored in SRCS-y
-#SRCS-y := main.c stream_gen.c string_matcher.c
-
 ### LIBRARIES AND INCLUDES ###
 LDLIBS     = 
 
@@ -66,7 +63,7 @@ LIBS_CFLAGS = -Ilibnids-1.24/src -Iinclude  $(PCAP_CFLAGS) $(LNET_CFLAGS)
 LIBS_CFLAGS += -DSTAT_THREAD
 
 ## Only store request data
-LIBS_CFLAGS += -DONLY_REQUEST
+# LIBS_CFLAGS += -DONLY_REQUEST
 
 ## Out-of-order generation support
 # LIBS_CFLAGS += -DOOO_SEND
@@ -92,7 +89,7 @@ LIBS_CFLAGS += -DONLY_REQUEST
 # LIBS_CFLAGS += -DUSE_PDUMP
 
 ## Generator with multiple threads
-# LIBS_CFLAGS += -DSEND_THREAD
+LIBS_CFLAGS += -DSEND_THREAD
 
 ## Generation with only one TCP stream
 # LIBS_CFLAGS += -DSINGLE_STREAM

@@ -27,6 +27,7 @@ private:
   double request_ratio_;
   unsigned wait_time_;
   unsigned duration_;
+	int think_time_; /// ns
 
   std::vector<connptr> conns_;
   std::vector<int> ref_;
@@ -79,11 +80,12 @@ private:
 		memcpy((void *)hrt_ptr_, &conns_[j]->req_cnt_, 4);
   }
 
-  unsigned Fibonacci_service(unsigned n) {
+  unsigned Fibonacci_service(int delay) { /// ns
   	unsigned pre = 0;
 		unsigned cur = 1;
+		int loops = delay * 0.75;
 
-		while (n-- > 0) {
+		while (loops-- > 0) {
 			cur += pre;
 			pre = cur - pre;
 		}
@@ -92,9 +94,9 @@ private:
   }
 public:
   client(unsigned conns, unsigned epoch, unsigned burst, unsigned setup_time,
-         unsigned wait_time, unsigned duration, double ratio, unsigned req_length, unsigned prio_grain)
+         unsigned wait_time, unsigned duration, int think_time, double ratio, unsigned req_length, unsigned prio_grain)
       : nr_conns_(conns), epoch_(epoch), burst_(burst), setup_time_(setup_time),
-        request_ratio_(ratio), wait_time_(wait_time), duration_(duration),
+        request_ratio_(ratio), wait_time_(wait_time), duration_(duration), think_time_(think_time),
 				req_length_(req_length), prio_grain_(prio_grain),
         heartbeat_(req_length, 0), request_(req_length, 0),
         stats_sec(metrics{}), stats_log(metrics{}){
@@ -154,16 +156,16 @@ public:
               app_logger.trace("all connections ready!");
             }
           });
+
           conn->when_recved([this] (const connptr& conn) {
             stats_sec.received++;
             stats_log.received++;
             std::string s = conn->get_input().string();
             conn->get_input().consume(s.size());
 
-						//@ wuwenqing, costing about 300 us
-						//unsigned val = Fibonacci_service(350000); 
-						//request_[10] = static_cast<int>(val % 127);
-
+						//@ wuwenqing, simulate 'Think time' forxx ns
+						unsigned val = Fibonacci_service(think_time_); 
+						request_[9] = static_cast<int>(val % 127);
           });
 
           conn->when_closed([this] {
@@ -183,8 +185,7 @@ public:
             stats_log.retry++;
             engine().add_oneshot_task_after(3s, [conn] {conn->reconnect(); });
            });
-
-        }
+        } //for(...)
       });
     }
     engine().add_oneshot_task_after(seconds(wait_time_ + setup_time_),
@@ -253,6 +254,7 @@ int main(int argc, char **argv) {
     ("setup-time,s", bpo::value<unsigned>()->default_value(1), "connection setup time(s)")
     ("wait-time,w", bpo::value<unsigned>()->default_value(1), "wait time before sending requests(s)")
     ("duration,d", bpo::value<unsigned>()->default_value(1000000), "duration of test")
+    ("think-time,t", bpo::value<int>()->default_value(0), "think time between requests (ns)")
     ("request-ratio,r", bpo::value<double>()->default_value(0.0), "ratio of request packet")
     ("log-duration", bpo::value<unsigned>()->default_value(10), "log duration between logs");
 
@@ -264,6 +266,7 @@ int main(int argc, char **argv) {
     auto setup = config["setup-time"].as<unsigned>();
     auto wait = config["wait-time"].as<unsigned>();
     auto duration = config["duration"].as<unsigned>();
+    auto think_time = config["think-time"].as<int>();
     auto ratio = config["request-ratio"].as<double>();
     auto log_duration = config["log-duration"].as<unsigned>();
     auto dest = config["dest"].as<std::string>();
@@ -277,7 +280,7 @@ int main(int argc, char **argv) {
 
     auto loaders = new distributor<client>;
     loaders->start(conn / (smp::count-1), epoch, burst / (smp::count-1),
-        setup, wait, duration, ratio, length, prio_grain);
+        setup, wait, duration, think_time, ratio, length, prio_grain);
     loaders->invoke_on_all(&client::start, ipv4_addr(dest, 80));
 
     adder connected, send, request, received, retry;

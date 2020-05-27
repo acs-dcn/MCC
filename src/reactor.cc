@@ -275,10 +275,10 @@ void reactor::run() {
   }
 
   if (id_ == 0) {
-    net_logger.info("engine {} stopped, waiting for workers", id_);
+    net_logger.info("\033[32mengine {} stopped, waiting for workers\033[0m\n", id_);
     smp::join_all();
   } else {
-    net_logger.info("engine {} stopped", id_);
+    net_logger.info("\033[32mengine {} stopped\033[0m\n", id_);
   }
 }
 
@@ -291,14 +291,16 @@ void reactor::stop() {
     }
   }
   stopping_  = true;
-  net_logger.trace("engine {} stopping...", id_);
+  net_logger.info("\033[32mengine {} stopping...\033[0m", id_);
 }
 
 void reactor::configure(boost::program_options::variables_map configuration) {
   network_stack_ = configuration["network-stack"].as<std::string>();
   mode_ = configuration["mode"].as<std::string>();
+#ifdef AES_GCM
 	// @wuwenqing
 	ssl_layer::ssl_init(sctx_);
+#endif
 
   if (network_stack_ == "kernel") {
     pin_this_thread(id_);

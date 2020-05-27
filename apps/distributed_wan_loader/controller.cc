@@ -24,8 +24,10 @@ int main(int argc, char* argv[]) {
      "1 for fixed IDT, 2 for random IDT")
     ("lambda,a", bpo::value<unsigned>()->default_value(32),
      "Parameter for Poisson distribution")
-    ("interact-number,i", bpo::value<unsigned>()->default_value(1),
+    ("interact-times,i", bpo::value<unsigned>()->default_value(1),
      "interaction times for each connection")
+    ("think-time,t", bpo::value<int>()->default_value(100000),
+     "think time between requests (ns)")
     ("port,p", bpo::value<unsigned>()->default_value(2222),
      "server bind port")
     ("workers,n", bpo::value<unsigned>()->default_value(1),
@@ -38,7 +40,8 @@ int main(int argc, char* argv[]) {
     auto idt_mode = config["idt-mode"].as<unsigned>();
     auto length = config["length"].as<unsigned>();
     auto lambda = config["lambda"].as<unsigned>();
-    auto nr_interact = config["interact-number"].as<unsigned>();
+    auto nr_interact = config["interact-times"].as<unsigned>();
+		auto think_time = config["think-time"].as<int>();
     auto port = config["port"].as<unsigned>();
     auto workers = config["workers"].as<unsigned>();
 
@@ -96,7 +99,8 @@ int main(int argc, char* argv[]) {
           cmd.set_length(length);
           cmd.set_idt_mode(idt_mode);
           cmd.set_lambda(lambda);
-          cmd.set_interact_number(nr_interact);
+          cmd.set_interact_times(nr_interact);
+					cmd.set_think_time(think_time);
           // set the start timer to 3s later
           auto tp = system_clock::now();
           app_logger.trace("now: {}", 

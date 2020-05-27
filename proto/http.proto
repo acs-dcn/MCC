@@ -19,4 +19,5 @@ message command {
   uint32 conn = 1;
   uint64 start_ts = 2;
   uint32 duration = 3;
+	int32	think_time = 4;
 }

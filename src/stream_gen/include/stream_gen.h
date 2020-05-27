@@ -47,7 +47,7 @@
 #define MAX_SEG_SIZE		1435  	//MSS
 #define MAX_CONCURRENCY     5000
 
-#define NUM_SEND_THREAD		8 		//maximal number of sending thread
+#define NUM_SEND_THREAD		20 		//maximal number of sending thread
 
 /* cut mode */
 #define	EQUAL_DIVIDE        1  	 	// divide buffer into several equal part

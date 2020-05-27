@@ -5,6 +5,7 @@
 #include "smp.h"
 #include "distributor.h"
 #include "http/http_parser.h"
+#include "proto/wan.pb.h"
 
 #include <chrono>
 #include <memory>
@@ -12,6 +13,8 @@
 #include <random>
 
 using namespace infgen;
+using namespace std::chrono;
+using namespace std::chrono_literals;
 namespace bpo = boost::program_options;
 
 class http_client {
@@ -26,7 +29,7 @@ private:
 	unsigned idt_mode_;	 		 /// Fixed inter-departure time or Random IDT
 	unsigned length_;				 /// Length of payload
 	unsigned lambda_;        /// Parameter of Poisson Distribution
-	int think_time_;		 /// Think time between requests
+	int think_time_;         /// Think time between requests (ns)
 
   ipv4_addr server_addr_;
   distributor<http_client>* container_;
@@ -51,7 +54,7 @@ private:
 		stats.nr_response = 0;
 	}
 
-  unsigned Fibonacci_service(int delay) { /// ** ns
+  unsigned Fibonacci_service(int delay) {  /// ns
     unsigned pre = 0;
 		unsigned cur = 1;
 		int loops = delay * 0.75;
@@ -150,7 +153,7 @@ private:
   };
 
 public:
-  http_client(unsigned concurrency, unsigned duration, 
+  http_client(unsigned concurrency, unsigned duration,
 							unsigned nr_interact, unsigned len_mode, unsigned idt_mode, 
 							unsigned length, unsigned lambda, int think_time)
       : total_conn_(concurrency), duration_(duration), conn_per_core_(concurrency / (smp::count-1)), 
@@ -173,6 +176,7 @@ public:
 
 		for (unsigned i = 0; i < conn_per_core_; ++i)  {		
 			auto conn = engine().connect(make_ipv4_address(server_addr));
+			
 			auto http_conn = std::make_shared<http_connection>(conn);
 			
 			conns_.push_back(http_conn);
@@ -209,13 +213,13 @@ public:
 
 			conn->on_message([http_conn, this](const connptr& conn, std::string& msg) {
 				conn->get_input().consume(msg.size());
-				// Simulate 'Think time'	
+				http_conn->complete_request();
+				
+				//@ wuwenqing, simulate 'think time'
         unsigned val = Fibonacci_service(think_time_); 
 				if (msg.size() > 0)
 						msg[0] = static_cast<int>(val % 127);
 
-				http_conn->complete_request();
-				
 				if (http_conn->nr_interact_ > 0 && 
 					conn->get_state() == tcp_connection::state::connected) { // More interactions
 					http_conn->do_req();  // Send another request
@@ -295,112 +299,156 @@ public:
 int main(int argc, char **argv) {
   application app;
   app.add_options()
-    ("conn,c", bpo::value<unsigned>()->default_value(100), "Total connections")
-		("length-mode,g", bpo::value<unsigned>()->default_value(1), "1 for fixed size, 2 for random size")
-		("idt-mode,j", bpo::value<unsigned>()->default_value(1), "1 for fixed IDT, 2 for random IDT")
-		("length,l", bpo::value<unsigned>()->default_value(16), "Length of message with fixed size(> 8)")
-    ("lambda,a", bpo::value<unsigned>()->default_value(32), "Parameter of Poisson distribution")
-    ("interact-times,i", bpo::value<unsigned>()->default_value(1), "Times of interactions per connection")
-    ("think-time,t", bpo::value<int>()->default_value(100000), "Think time before another request (ns)")
 		("verbose,v", bpo::value<unsigned>()->default_value(0), "Show verbose message")
-    ("duration,d", bpo::value<unsigned>()->default_value(30), "Duration of test in seconds");
+    ("server-ip,s", bpo::value<std::string>(), "server ip address")
+    ("server-port,p", bpo::value<unsigned>()->default_value(2222), "server port")    
+		("local-ip,l", bpo::value<std::string>(), "local ip address")
+    ("client-id,n", bpo::value<unsigned>(), "client id");
+
   app.run(argc, argv, [&app] {
     auto &config = app.configuration();
-    auto server = config["dest"].as<std::string>();
-    auto total_conn = config["conn"].as<unsigned>();
-    auto nr_interact = config["interact-times"].as<unsigned>();
-		auto len_mode = config["length-mode"].as<unsigned>();
-		auto idt_mode = config["idt-mode"].as<unsigned>();
-    auto length = config["length"].as<unsigned>();
-		auto lambda = config["lambda"].as<unsigned>();
-		auto think_time = config["think-time"].as<int>();
+    auto dest = config["dest"].as<std::string>();
 		auto verbose = config["verbose"].as<unsigned>();
-    auto duration = config["duration"].as<unsigned>();
+    auto ip = config["server-ip"].as<std::string>();
+    auto port = config["server-port"].as<unsigned>();
+    auto local_ip = config["local-ip"].as<std::string>();
+    auto id = config["client-id"].as<unsigned>();
 
-    if (total_conn % (smp::count-1) != 0) {
-      fmt::print("Error, Concurrency needs to be equal to an integral multiple of number of CPUs. \n");
-      exit(-1);
-    }
+    ipv4_addr server_addr(ip, port);
+    ipv4_addr local_addr(local_ip);
 
-		if ((len_mode == 1 && length < 8) || (len_mode == 2 && lambda < 8)) {
-			fmt::print("\033[31mWarning, Length of payload should be larger than 8.\033[0m\n");
-			exit(-1);
-		}
+		uint32_t conns, duration;
+		int think_time;
+		uint32_t len_mode, length, idt_mode, lambda, nr_interact;
+		uint64_t start_ts;
+		system_clock::time_point start_tp;
+		
+    system_clock::time_point started, finished;
+    adder reqs;
 
     auto clients = new distributor<http_client>;
-    clients->start(total_conn, duration, nr_interact, len_mode, idt_mode, length, lambda, think_time);
-
-    //auto started = system_clock::now();
-		fmt::print("\n== WAN Loader ==================================\n");
-    fmt::print(" Running {}s test @ server: {}\n", duration, server);
-    fmt::print(" Connections: {}\n", total_conn);
-		fmt::print("================================================\n\n");
-
-    clients->invoke_on_all(&http_client::running, ipv4_addr(server, 80));
-
-		if (verbose) {
-			adder connected, sent, received, request, response;
-			engine().add_periodic_task_at<infinite>(
-					system_clock::now(), 1s, [&, clients]() mutable {
-						clients->invoke_on_all(&http_client::aggregate_stat);
-						clients->map_reduce(connected, &http_client::connected_sec);
-						clients->map_reduce(sent, &http_client::sent_sec);
-						clients->map_reduce(received, &http_client::received_sec);
-						clients->map_reduce(request, &http_client::request_sec);
-						clients->map_reduce(response, &http_client::response_sec);
-						clients->invoke_on_all(&http_client::print_stats);
-					
-						engine().add_oneshot_task_after(150ms, [&] () mutable {
-            fmt::print("[ALL]\t\tconnected: {}\tsend: {}\treceive: {}\trequest: {}\tresponse: {}\n",
-                       connected.result(), 
-											 sent.result(), received.result(), request.result(), response.result());
-            connected.reset();
-            sent.reset();
-            received.reset();
-            request.reset();
-            response.reset();
-            fmt::print("\n");
-          });
-			});	
-		}
-	
-		system_clock::time_point start_ts;
-		system_clock::time_point end_ts;
     
-		engine().add_oneshot_task_after(3s, [clients, &start_ts]() {
-      clients->invoke_on_all(&http_client::end_test);
-			start_ts = system_clock::now();
+    auto conn = engine().connect(make_ipv4_address(server_addr), make_ipv4_address(local_addr));    
+		
+		conn->when_ready([&](const connptr& con) {
+      app_logger.info("Connected to server!");
+      report r;
+      r.set_client_id(id);
+      report::notice *n = r.mutable_note();
+      n->set_online(true);
+      std::string packet;
+      r.SerializeToString(&packet);
+      conn->send_packet(packet); // Report status
+    }); 
+
+    conn->on_message([&](const connptr& conn, std::string msg) mutable {
+      command cmd;
+      conn->get_input().consume(msg.size());
+      if (!cmd.ParseFromString(msg)) {
+        app_logger.error("Failed to parse message!");
+      }
+
+      conns = cmd.conn();
+      duration = cmd.duration();
+      start_ts = cmd.start_ts();
+			len_mode = cmd.length_mode();
+			length = cmd.length();
+			idt_mode = cmd.idt_mode();
+			lambda = cmd.lambda();
+			nr_interact = cmd.interact_times();
+			think_time = cmd.think_time();
+
+      start_tp = start_tp + milliseconds(start_ts);
+
+      fmt::print(
+          "configuration: \n\tconnections: {}\n\tduration: {}\n\tthreads:{}\n",          
+					conns, duration, smp::count-1);
+      if (conns % (smp::count-1) != 0) {
+        fmt::print("error: conn needs to be n * cpu_nr \n");
+        exit(-1);
+      }
+
+			if (conns % (smp::count-1) != 0) {
+  	    fmt::print("Error, Concurrency needs to be equal to an integral multiple of number of CPUs. \n");
+    	  exit(-1);
+    	}
+
+			if ((len_mode == 1 && length < 8) || (len_mode == 2 && lambda < 8)) {
+				fmt::print("\033[31mWarning, Length of payload should be larger than 8.\033[0m\n");
+				exit(-1);
+			}
+
+      engine().add_oneshot_task_at(start_tp, [&, conn]() mutable {
+				clients->start(conns, duration, nr_interact, len_mode, idt_mode, length, lambda, think_time);
+
+        started = system_clock::now();
+        fmt::print("Concurrency set: {}\n", conns);
+
+        clients->invoke_on_all(&http_client::running, ipv4_addr(dest, 80));
+        clients->invoke_on_all(&http_client::end_test);
+				
+				if (verbose) {
+					adder connected, sent, received, request, response;
+					engine().add_periodic_task_at<infinite>(
+							system_clock::now(), 1s, [&, clients]() mutable {
+								clients->invoke_on_all(&http_client::aggregate_stat);
+								clients->map_reduce(connected, &http_client::connected_sec);
+								clients->map_reduce(sent, &http_client::sent_sec);
+								clients->map_reduce(received, &http_client::received_sec);
+								clients->map_reduce(request, &http_client::request_sec);
+								clients->map_reduce(response, &http_client::response_sec);
+								clients->invoke_on_all(&http_client::print_stats);
+							
+								engine().add_oneshot_task_after(150ms, [&] () mutable {
+								fmt::print("[ALL]\t\tconnected: {}\tsend: {}\treceive: {}\trequest: {}\tresponse: {}\n",
+									connected.result(), sent.result(), received.result(), request.result(), response.result());
+								connected.reset();
+								sent.reset();
+								received.reset();
+								request.reset();
+								response.reset();
+								fmt::print("\n");
+							});
+					});	
+				}
+
+        finished = started;
+
+        clients->when_done([&, clients, conn]() mutable {
+          app_logger.info("load test finished, running statistics collection process...");          
+					finished = system_clock::now();
+          clients->map_reduce(reqs, &http_client::total_reqs);
+
+          engine().add_oneshot_task_after(1s, [&, clients, conn] {
+            auto total_reqs = reqs.result();
+            auto elapsed = duration_cast<seconds>(finished - started);
+            auto secs = elapsed.count();
+						fmt::print("\n== WAN Loader ==================================\n");
+            fmt::print("Total CPUs: {}\n", smp::count-1);
+						fmt::print("{} requests in {}s\n", total_reqs, secs);          
+						fmt::print("Request/sec:  {}\n", static_cast<double>(total_reqs) / secs);
+            fmt::print("================================================\n\n");
+
+            report r;
+            r.set_client_id(id);
+            r.set_completes(total_reqs);
+            std::string packet;
+            r.SerializeToString(&packet);
+            conn->send_packet(packet); // Report final statistics
+
+            engine().add_oneshot_task_after(1s, [&, clients, conn] {
+              clients->stop();
+              engine().stop();
+            });
+          });
+        });
+      });
+
     });
-
-		clients->invoke_on_all(&http_client::end_test);
-
-		adder total_requests;
-		clients->when_done([&end_ts, clients, &total_requests] () mutable {
-			app_logger.info("Load test finished.\nAggregating statistics...");
-			end_ts = system_clock::now();
-			clients->map_reduce(total_requests, &http_client::total_reqs);
-
-			engine().add_oneshot_task_after(1s, [clients] {
-//			  clients->stop();
-				engine().stop();	
-			});
-		});
-
     engine().run();
 
-		auto reqs = total_requests.result();
-		std::chrono::duration<double> elapsed = end_ts - start_ts;
-		auto secs = elapsed.count();
-
-		fmt::print("\n== WAN Loader ==================================\n");
-		fmt::print(" Test Done\n");				
-		fmt::print(" {} requests in {}s\n", reqs, secs);
-		fmt::print(" Transfer / sec: {}\n", static_cast<double>(reqs) / secs);				
-		fmt::print("================================================\n\n");
 
     delete clients;
-
   });
-
-  return 0;
+	return 0;
 }

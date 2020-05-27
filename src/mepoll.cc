@@ -29,9 +29,9 @@ bool mtcp_epoll_backend::poll(int timeout = 0) {
     epoll_logger.debug("events: {}, requested: {}, remove: {}", events,
                      state->events_requested, events_to_remove);
 
-    complete_epoll_event(*state, events, MTCP_EPOLLOUT);
     complete_epoll_event(*state, events, MTCP_EPOLLIN);
-
+    complete_epoll_event(*state, events, MTCP_EPOLLOUT);
+#if 0
     if (events_to_remove) {
       epoll_logger.trace("remove events {} for socket {}", events_to_remove,
                        state->pollid);
@@ -49,6 +49,7 @@ bool mtcp_epoll_backend::poll(int timeout = 0) {
         //engine().stop();
       }
     }
+#endif
   }
   return nr;
 }
