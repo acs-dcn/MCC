@@ -3,7 +3,7 @@
 
 ### Introduction
 
-MCC is a predictable and highly scalable network load generator used for simulating workload in IoT scenarios. It can replicate flow-level network load utilizing BSD-like socket API provided by user-level TCP/IP stack. According to experiments, MCC can generate 3.2 million concurrent TCP connections using only a single CPU core, and achieve almost linearly scalability in multicore systems. 
+MCC is a scalable network workload generator based on user-space stack. It can replicate flow-level network load utilizing BSD-like socket API provided by user-space TCP/IP stack (mTCP). According to experiments, MCC can generate 3.2 million concurrent TCP connections using only a single CPU core, and achieve almost linearly scalability in multicore systems. 
 
 ### Release Notes
 
