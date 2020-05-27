@@ -38,7 +38,8 @@ Multicore scalable network load generator based on userspace stack.
 
 ### Architecture
  
- ![MCC_architecture](images/mcc_architecture_dis.png)
+ <img src="images/mcc_architecture_dis.png" width = "250" height = "600" alt="" align=center />
+
 
 ### Prerequisites
 Intel DPDK      
