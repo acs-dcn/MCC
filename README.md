@@ -8,14 +8,17 @@ MCC is a scalable network workload generator based on user-space stack. It can r
 
 ### Architecture
  
- <img src="images/mcc_architecture_dis.png" width = "600" height = "250" alt="" align=center />
+ <img src="images/mcc_architecture_dis.png" width = "700" height = "300" alt="" align=center />
 
 
 ### Prerequisites
-Intel DPDK      
+Intel DPDK   
+libpcap
+libnet
 cmake3      
 boost-devel      
 bc      
+fmt
 pciutils      
 
 ### Included directories
@@ -28,13 +31,15 @@ pciutils
 |__mtcp/			User-level stack      
 |__scripts/			Scripts used for deployment      
 |__src/				Source files    
+|__lib/				Static-Link libraries
 |__tests/			Testing examples   
 ```
 
 **Introduction to apps**
 
-+ mcc_client: an app used for simulating massive concurrent tcp connections in IoT scenerio.
++ mcc_client: Application used for simulating massive concurrent tcp connections in IoT scenerio.
 + http_loader: an HTTP benchmarking tool like wrk.
++ wan_loader: Application used for generating Web workload.
 
 ### Installation
 
