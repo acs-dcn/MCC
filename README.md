@@ -5,36 +5,6 @@
 
 MCC is a scalable network workload generator based on user-space stack. It can replicate flow-level network load utilizing BSD-like socket API provided by user-space TCP/IP stack (mTCP). According to experiments, MCC can generate 3.2 million concurrent TCP connections using only a single CPU core, and achieve almost linearly scalability in multicore platform and distributed systems. 
 
-### Release Notes
-
-**V 2.0**
-
-Add support for distributed mode and stateless workload generation
-
-+ Distributed
-+ Stateful/Stateless
-
-**V 1.2**
-
-Add suport for application-level load generation
-
-+ Encryption/decryption
-+ Simulating response processing
-+ Modeling for packet length and inter-departure time
-
-**V 1.1**
-
-Add supprt for paket-level priority
-
-+ MCC only supports flow-level priority before, which means packets in the same flow hold the same priority for MCC v1.0. To meet more needs, we add support for packet-level priority.
-
-**V 1.0**
-
-Multicore scalable network load generator based on userspace stack.
-
-+ User-level-stack-based
-+ Reactor pattern
-+ Multi-threaded
 
 ### Architecture
  
@@ -116,12 +86,36 @@ Use ^C to gracefully shutdown the application. Or you can kill process with “p
 2. No connection is established successfully when using user-level stack.
 You need to add static ARP entry and static route entry.
 
-### Roadmap
+### Release Notes
 
-+ Extend to distributed systems.
-+ Stateless load generation.
-+ Simulating complicated WAN workload.
-+ Generating application-level network load.. 
+**V 2.0**
+
+Add support for distributed mode and stateless workload generation
+
++ Distributed
++ Stateful/Stateless
+
+**V 1.2**
+
+Add suport for application-level load generation
+
++ Encryption/decryption
++ Simulating response processing
++ Modeling for packet length and inter-departure time
+
+**V 1.1**
+
+Add supprt for paket-level priority
+
++ MCC only supports flow-level priority before, which means packets in the same flow hold the same priority for MCC v1.0. To meet more needs, we add support for packet-level priority.
+
+**V 1.0**
+
+Multicore scalable network load generator based on userspace stack.
+
++ User-level-stack-based
++ Reactor pattern
++ Multi-threaded
 
 ### Contacts
 
