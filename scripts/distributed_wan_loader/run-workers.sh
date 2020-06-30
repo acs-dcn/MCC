@@ -9,7 +9,7 @@ start_test()
   id=0
   for line in `cat $filename`
   do  
-    echo "Start node $id to server 10.30.3.6"
+    echo "Start node $id to server"
     ssh root@$line 'bash -s' $line $id 10.30.3.6 < load_test.sh &
 		id=$(($id+1))    
 		if [ $id -eq $nodes ] 

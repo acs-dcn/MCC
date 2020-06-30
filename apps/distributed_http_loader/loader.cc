@@ -288,7 +288,7 @@ int main(int argc, char **argv) {
             conn->send_packet(packet);
 
             engine().add_oneshot_task_after(1s, [&, clients, conn] {
-              clients->stop();
+              //clients->stop();
               engine().stop();
             });
           });

@@ -255,7 +255,7 @@ int main(int argc, char **argv) {
     ("wait-time,w", bpo::value<unsigned>()->default_value(1), "wait time before sending requests(s)")
     ("duration,d", bpo::value<unsigned>()->default_value(1000000), "duration of test")
     ("think-time,t", bpo::value<int>()->default_value(0), "think time between requests (ns)")
-    ("request-ratio,r", bpo::value<double>()->default_value(0.0), "ratio of request packet")
+    ("request-ratio,r", bpo::value<double>()->default_value(1.0), "ratio of request packet")
     ("log-duration", bpo::value<unsigned>()->default_value(10), "log duration between logs");
 
   app.run(argc, argv, [&app] {

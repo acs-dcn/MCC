@@ -189,9 +189,10 @@ public:
             stats.nr_received++;
           });
 
-          conn->when_closed( [this, conn] {
+          conn->when_closed( [this, http_conn, conn] {
             stats.nr_connected--;
             //conn->reconnect(); /// Close current connection --> Establish another connection          
+						conns_.remove(http_conn);
 					});
 
           conn->on_message([http_conn, this](const connptr& conn, std::string& msg) { 
@@ -218,8 +219,9 @@ public:
               fmt::print("\033[31mConn {},  interact_num {}\033[0m\n", conn->get_id(),  http_conn->nr_interact_);            }
           });
 
-          conn->when_disconnect([this] (const connptr& conn) {
+          conn->when_disconnect([this, http_conn] (const connptr& conn) {
             stats.nr_connected--;
+						conns_.remove(http_conn);
             //conn->reconnect();
           });
         } // while (stats.nr_connected < conn_per_core_)
@@ -262,8 +264,9 @@ public:
 				stats.nr_received++;
 			});
 
-			conn->when_closed( [this, conn] {
+			conn->when_closed( [this, http_conn, conn] {
 				stats.nr_connected--;
+				conns_.remove(http_conn);
 			//	conn->reconnect(); /// Close current connection --> Establish another connection
 			});
 
@@ -292,9 +295,10 @@ public:
 				}
 			});
 
-			conn->when_disconnect([this] (const connptr& conn) {
+			conn->when_disconnect([this, http_conn] (const connptr& conn) {
 				stats.nr_connected--;
 				//conn->reconnect();
+				conns_.remove(http_conn);
 			});
 		} // for(...)
 
@@ -490,7 +494,7 @@ int main(int argc, char **argv) {
             conn->send_packet(packet); // Report final statistics
 
             engine().add_oneshot_task_after(1s, [&, clients, conn] {
-              clients->stop();
+//              clients->stop();
               engine().stop();
             });
           });

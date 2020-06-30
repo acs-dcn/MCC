@@ -7,7 +7,7 @@ server=$3
 echo 10000000 > /proc/sys/fs/nr_open
 ulimit -n 5000000
 
-cd /home/wenqing/wanloader/
+cd /home/mcctest/wanloader/
 ifconfig dpdk0 10.30.$(($id+3)).7 netmask 255.255.0.0 up
 ifconfig dpdk0 10.30.$(($id+3)).7 netmask 255.255.0.0 up
 

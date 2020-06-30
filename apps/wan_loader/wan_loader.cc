@@ -9,6 +9,7 @@
 #include <chrono>
 #include <memory>
 #include <vector>
+#include <list>
 #include <random>
 
 using namespace infgen;
@@ -68,13 +69,6 @@ private:
     http_connection(connptr c): flow(c) {}
     connptr flow;
     
-		uint64_t req_done {0};  /// Finished request
-
-		unsigned nr_snd {0};   /// Packets sent
-		unsigned nr_rcv {0};  /// Packets received
-		unsigned nr_req {0};   /// Requests sent
-		unsigned nr_resp {0};  /// Responses received
-    
     unsigned header_len;
 		unsigned lmode_;
 		unsigned imode_;
@@ -85,13 +79,6 @@ private:
 		unsigned lam_;
 		std::vector<unsigned> lens_;/// Payload size of each request
 		std::vector<unsigned> idts_;/// Payload size of each request
-
-		void cl_stat() {
-			nr_snd = 0;
-			nr_rcv = 0;
-			nr_req = 0;
-			nr_resp = 0;
-		}
 
 		void app_modeling() {
 			std::minstd_rand engine(time(NULL));
@@ -130,13 +117,9 @@ private:
       flow->send_packet(req);
 
 			nr_interact_--;
-			nr_req++;
-			nr_snd++;
     }
 
     void complete_request() {
-			nr_resp++;
-      req_done++;
     }
 
     void finish() {
@@ -165,20 +148,95 @@ public:
   }
 
 private:
-  std::vector<std::shared_ptr<http_connection>> conns_;
+  std::list<std::shared_ptr<http_connection>> conns_;
 public:
+	void Reconnecting(ipv4_addr server_addr) {
+		engine().add_periodic_task_at<infinite>(system_clock::now(), 80ms, 
+						[&, server_addr]() mutable {
+			assert(stats.nr_connected >= 0);
+			while (stats.nr_connected < conn_per_core_) {
+					auto conn = engine().connect(make_ipv4_address(server_addr));
+					auto http_conn = std::make_shared<http_connection>(conn);
+					
+				  stats.nr_connected++;
+					conns_.push_back(http_conn);
+					
+					conn->when_ready([http_conn, this] (const connptr& conn){
+						
+						http_conn->nr_interact_ = nr_interact_t_;
+						http_conn->lmode_ = len_mode_;
+						http_conn->imode_ = idt_mode_;
+						http_conn->len_ = length_;
+						http_conn->lam_ = lambda_;
+						http_conn->app_modeling();
 
-  void running(ipv4_addr server_addr) {
+						http_conn->do_req();
+						stats.nr_sent++;
+						stats.nr_request++;
+					});
+					
+					conn->when_recved([this, http_conn, conn] (const connptr& conn) {
+						if (!http_conn->header_set) {
+							// parse header
+							std::string resp_str = conn->get_input().string();
+							http_conn->header_set = true;
+						} else {
+							std::string content = conn->get_input().string();
+						}
+
+						stats.nr_received++;
+					});
+
+					conn->when_closed( [this, http_conn, conn] {
+						stats.nr_connected--;
+						//conn->reconnect(); /// Close current connection --> Establish another connection
+						conns_.remove(http_conn);
+					});
+
+					conn->on_message([http_conn, this](const connptr& conn, std::string& msg) {
+						conn->get_input().consume(msg.size());
+						// Simulate 'Think time'	
+						unsigned val = Fibonacci_service(think_time_); 
+						if (msg.size() > 0)
+								msg[0] = static_cast<int>(val % 127);
+
+						http_conn->complete_request();
+						stats.nr_response++;
+						stats.nr_done++;
+						
+						if (http_conn->nr_interact_ > 0 && 
+							conn->get_state() == tcp_connection::state::connected) { // More interactions
+							http_conn->do_req();  // Send another request
+							stats.nr_sent++;
+							stats.nr_request++;
+						} else if (conn->get_state() == tcp_connection::state::connected){ // Finished interacting
+							conn->close();
+							conns_.remove(http_conn);
+						} else {
+							fmt::print("\033[31mConn {},  interact_num {}\033[0m\n", conn->get_id(),  http_conn->nr_interact_);			
+						}
+					});
+
+					conn->when_disconnect([this, http_conn] (const connptr& conn) {
+						stats.nr_connected--;
+						//conn->reconnect();
+						conns_.remove(http_conn);
+					});
+				} // while (stats.nr_connected < conn_per_core_)
+		});	
+  }
+  
+	void running(ipv4_addr server_addr) {
     server_addr_ = server_addr;
 
 		for (unsigned i = 0; i < conn_per_core_; ++i)  {		
 			auto conn = engine().connect(make_ipv4_address(server_addr));
 			auto http_conn = std::make_shared<http_connection>(conn);
 			
+		  stats.nr_connected++;
 			conns_.push_back(http_conn);
 			
 			conn->when_ready([http_conn, this] (const connptr& conn){
-				stats.nr_connected++;
 			  http_conn->nr_interact_ = nr_interact_t_;
 				http_conn->lmode_ = len_mode_;
 				http_conn->imode_ = idt_mode_;
@@ -186,8 +244,9 @@ public:
 				http_conn->lam_ = lambda_;
 				http_conn->app_modeling();
 
-				//fmt::print("\033[31 conn {} ready, nr_interact {}.\033[0m\n", conn->get_id(), http_conn->nr_interact_);
 				http_conn->do_req();
+				stats.nr_sent++;
+				stats.nr_request++;
 			});
 			
 			conn->when_recved([this, http_conn, conn] (const connptr& conn) {
@@ -199,12 +258,13 @@ public:
 					std::string content = conn->get_input().string();
 				}
 
-				http_conn->nr_rcv++;
+				stats.nr_received++;
 			});
 
-			conn->when_closed( [this, conn] {
+			conn->when_closed( [this, http_conn, conn] {
 				stats.nr_connected--;
-				conn->reconnect(); /// Close current connection --> Establish another connection
+				//conn->reconnect(); /// Close current connection --> Establish another connection
+				conns_.remove(http_conn);
 			});
 
 			conn->on_message([http_conn, this](const connptr& conn, std::string& msg) {
@@ -215,35 +275,31 @@ public:
 						msg[0] = static_cast<int>(val % 127);
 
 				http_conn->complete_request();
+				stats.nr_response++;
+				stats.nr_done++;
 				
 				if (http_conn->nr_interact_ > 0 && 
 					conn->get_state() == tcp_connection::state::connected) { // More interactions
 					http_conn->do_req();  // Send another request
+					stats.nr_sent++;
+					stats.nr_request++;
 				} else if (conn->get_state() == tcp_connection::state::connected){ // Finished interacting
 					conn->close(); 
+					conns_.remove(http_conn);
 				} else {
 					fmt::print("\033[31mConn {},  interact_num {}\033[0m\n", conn->get_id(),  http_conn->nr_interact_);			
 				}
 			});
 
-			conn->when_disconnect([this] (const connptr& conn) {
+			conn->when_disconnect([this, http_conn] (const connptr& conn) {
 				stats.nr_connected--;
-				conn->reconnect();
+				// conn->reconnect();
+				conns_.remove(http_conn);
 			});
-		}
-  }
+		} // for (int i = 0; i < ...)
 
-  // methods for map-reduce
-	void aggregate_stat() {
-		for (auto&& http_conn: conns_) {
-			stats.nr_sent += http_conn->nr_snd;
-			stats.nr_received += http_conn->nr_rcv;
-			stats.nr_request += http_conn->nr_req;
-			stats.nr_response += http_conn->nr_resp;
-			
-			http_conn->cl_stat();
-		}
-	}
+		engine().add_oneshot_task_after (1s, [this, server_addr]{ Reconnecting(server_addr); });
+	} // running(...)
 
 	uint64_t total_reqs() {
 		fmt::print("Request on cpu {}: {}\n", engine().cpu_id(), stats.nr_done);
@@ -277,10 +333,9 @@ public:
     if (duration_ > 0) {
       engine().add_oneshot_task_after(std::chrono::seconds(duration_), [this] {
 				
-        for (auto&& http_conn: conns_) {
-          //http_conn->finish();
-					stats.nr_done += http_conn->req_done;
-        }
+        //for (auto&& http_conn: conns_) {
+        //  http_conn->finish();
+        //}
 				
         finish();
       });
@@ -342,7 +397,6 @@ int main(int argc, char **argv) {
 			adder connected, sent, received, request, response;
 			engine().add_periodic_task_at<infinite>(
 					system_clock::now(), 1s, [&, clients]() mutable {
-						clients->invoke_on_all(&http_client::aggregate_stat);
 						clients->map_reduce(connected, &http_client::connected_sec);
 						clients->map_reduce(sent, &http_client::sent_sec);
 						clients->map_reduce(received, &http_client::received_sec);

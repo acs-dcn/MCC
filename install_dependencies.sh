@@ -7,13 +7,13 @@ centos_packages=(
   numactl-devel
 	libnet-devel
 	libpcap-devel
-  devtoolset-8
   boost-devel
   bc 
   automake
   pciutils
   wget
   ntp
+  devtoolset-8
 )
 
 if [ "$ID" = "centos" ] ; then
@@ -33,8 +33,10 @@ if [ "$ID" = "centos" ] ; then
 	# install cmake3
   wget https://cmake.org/files/v3.13/cmake-3.13.5.tar.gz
 	tar -zxvf cmake-3.13.5
+	cd cmake-3.13.5/
 	./bootstrap && gmake && gmake install
 	ln -s /usr/local/bin/cmake /usr/local/bin/cmake3
+	cd ../
 
   # yum install -y centos-release-scl epel-release
   # rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org

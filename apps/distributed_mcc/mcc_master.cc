@@ -78,6 +78,7 @@ int main(int argc, char* argv[]) {
 
     engine().add_periodic_task_at<infinite>(system_clock::now(), 1s, [&] {
       system("clear");
+			uint64_t total_connected = 0;
       std::time_t t = std::time(nullptr);
       fmt::print("{:%Y-%m-%d %T}\n", fmt::localtime(t));
       fmt::print("\n");
@@ -87,7 +88,9 @@ int main(int argc, char* argv[]) {
             connected[i], tx_packets[i], rx_packets[i]);
         //tx_packets[i] = 0;
         //rx_packets[i] = 0;
+				total_connected += connected[i];
       }
+			fmt::print("\nTotal connected: {}\n", total_connected);
     });
 
     svr->on_message([&] (const connptr& con, std::string msg) mutable {
