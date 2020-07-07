@@ -29,7 +29,7 @@ pciutils
 |__conf/			Sample configuration files       
 |__http/			HTTP parsing files      
 |__mtcp/			User-level stack      
-|__scripts/			Scripts used for deployment      
+|__scripts/			Scripts used for deployment when running in distributed mode    
 |__src/				Source files    
 |__lib/				Static-Link libraries
 |__tests/			Testing examples   
@@ -71,6 +71,8 @@ There is a build_type option in build.sh to designate build type of the project.
 
 #### Run
 
+* Single Machine
+
 Take mcc_client for example:
 ```bash
 $ cd build/release/apps/mcc/
@@ -82,6 +84,15 @@ $ ./mcc -c 1000000 -d 60 --smp 9 --network-stack mtcp --dest 192.168.3.6
 --network-stack arg (=kernel)	Select network stack (default: kernel stack)
 --dest arg (=192.168.1.1)		Destination IP
 ```
+
+* Cluster Mode
+
+Take distributed_mcc_client for example:
+$ ./run-master.sh
+$ ./run-workers.sh 64 start hosts
+$ ./run-workers.sh 64 stop hosts
+
+(Scripts used above are in scripts/ directory)
 
 ### Frequently asked questions
 
