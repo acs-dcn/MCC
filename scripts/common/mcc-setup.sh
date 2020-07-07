@@ -82,6 +82,7 @@ sync_ts()
   echo "Synchronizing..."
 	for line in `cat $filename`
   do
+		#echo "node $id time synchronizing..."
     ssh root@$line 'yum install -y ntp && ntpdate 11.11.12.18' &
 		echo "Loader $id finished"
 		id=$(($id+1))
@@ -119,6 +120,7 @@ setup_vip()
   ip_block=3
   for line in `cat $filename`
   do  
+		echo "node $id setting virtual IP address"
     ssh root@$line 'bash -s'  $ip_start $ip_end $ip_block up < ip_setup.sh &
     echo "Loader $id set."
     id=$(($id+1))
@@ -139,6 +141,7 @@ unset_vip()
   ip_block=3
   for line in `cat $filename`
   do  
+		echo "node $id unsetting virtual IP address"
     ssh root@$line 'bash -s'  $ip_start $ip_end $ip_block down < ip_setup.sh &
     echo "Loader $id set."
     id=$(($id+1))

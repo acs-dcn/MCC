@@ -60,10 +60,11 @@ if [ "$ID" = "centos" ] ; then
 	ldconfig
 
 	# install fmt 
-  wget https://github.com/fmtlib/fmt/archive/5.3.0.tar.gz
-  tar xf 5.3.0.tar.gz
+	#wget https://github.com/fmtlib/fmt/archive/5.3.0.tar.gz
+	wget https://github.com/fmtlib/fmt/archive/6.1.0.tar.gz
+	tar xvf 6.1.0.tar.gz
 	# if cmake is installed with source code(add Symbolic link cmake3 to cmake)
-  cd fmt-5.3.0 && cmake3 ./ && make && make install && cd ../../
+  cd fmt-6.1.0 && cmake3 ./ && make && make install && cd ../../
 
   # warning: this will replace current linux kernel
 	# grub2-set-default 0
