@@ -88,11 +88,14 @@ $ ./mcc -c 1000000 -d 60 --smp 9 --network-stack mtcp --dest 192.168.3.6
 * Cluster Mode
 
 Take distributed_mcc_client for example:
+
+```bash
 $ ./run-master.sh
 $ ./run-workers.sh 64 start hosts
 $ ./run-workers.sh 64 stop hosts
 
-(Scripts used above are in scripts/ directory)
+```
+Scripts used above are in scripts/ directory.
 
 ### Frequently asked questions
 
