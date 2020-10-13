@@ -140,7 +140,7 @@ Multicore scalable network load generator based on userspace stack.
 
 zhangwl@ict.ac.cn   
 
-cmy@outlook.com
+cmy@ict.ac.cn
 
 ### References
 > [1] Wu, Wenqing, et al. "MCC: a Predictable and Scalable Massive Client Load Generator."  International Symposium on Benchmarking, Measuring and Optimization. Springer, Cham, 2019.
